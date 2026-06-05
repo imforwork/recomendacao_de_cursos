@@ -1,1 +1,2 @@
-df_recomenda.ipynb
+*.ipynb
+.ipynb_checkpoints/
