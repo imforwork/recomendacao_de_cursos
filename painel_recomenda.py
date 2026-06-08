@@ -3,6 +3,7 @@ import warnings
 import pandas as pd
 import numpy as np
 import streamlit as st
+from itables.streamlit import interactive_table
 from io import BytesIO
 
 warnings.filterwarnings("ignore")
@@ -25,25 +26,25 @@ st.markdown("""
 
 html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
 
-.main { background: #0d1117; }
-section[data-testid="stSidebar"] { background: #111827; border-right: 1px solid #1f2937; }
-section[data-testid="stSidebar"] * { color: #d1d5db !important; }
+.main { background: #f5f5f0; }
+section[data-testid="stSidebar"] { background: #ffffff; border-right: 1px solid #ddd; }
+section[data-testid="stSidebar"] * { color: #1a1a1a !important; }
 section[data-testid="stSidebar"] .stSelectbox label,
-section[data-testid="stSidebar"] .stMultiSelect label { color: #9ca3af !important; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; }
+section[data-testid="stSidebar"] .stMultiSelect label { color: #555 !important; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; }
 
 .page-title {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 2rem; font-weight: 700;
-    color: #f9fafb; letter-spacing: .04em;
+    color: #1a1a1a; letter-spacing: .04em;
     margin-bottom: .1rem;
 }
-.page-sub { font-size: .82rem; color: #6b7280; margin-bottom: 1.4rem; }
+.page-sub { font-size: .82rem; color: #777; margin-bottom: 1.4rem; }
 
 /* Cards */
 .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: .75rem; margin-bottom: 1.25rem; }
 .kpi-card {
-    background: #161d2b;
-    border: 1px solid #1e2d42;
+    background: #ffffff;
+    border: 1px solid #ddd;
     border-radius: 10px;
     padding: 1rem 1.2rem;
     position: relative; overflow: hidden;
@@ -54,25 +55,31 @@ section[data-testid="stSidebar"] .stMultiSelect label { color: #9ca3af !importan
     width: 3px; height: 100%;
     background: var(--accent);
 }
-.kpi-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: #6b7280; margin-bottom: .3rem; }
-.kpi-value { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; color: #f3f4f6; line-height: 1; }
-.kpi-delta { font-size: .72rem; margin-top: .25rem; color: #9ca3af; }
+.kpi-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: #777; margin-bottom: .3rem; }
+.kpi-value { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; color: #1a1a1a; line-height: 1; }
+.kpi-delta { font-size: .72rem; margin-top: .25rem; color: #555; }
 
 /* Table */
-.styled-table-wrapper { border-radius: 8px; overflow: hidden; border: 1px solid #1e2d42; }
-div[data-testid="stDataFrame"] { background: #0d1117; }
+.styled-table-wrapper { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+div[data-testid="stDataFrame"] { background: #f5f5f0; }
 
-.badge-oport  { background:#064e3b; color:#6ee7b7; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
-.badge-risco  { background:#7f1d1d; color:#fca5a5; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
-.badge-prov   { background:#1e3a5f; color:#93c5fd; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
+/* Badges por setor — cores extraídas do dashboard */
+.badge-oport  { background:#e8f4e8; color:#1a4a2a; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
+.badge-risco  { background:#fdecea; color:#8b2e2e; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
+.badge-prov   { background:#eaf0fb; color:#1a3a6b; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
 
+/* Section titles — três variantes de setor */
 .section-title {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 1.1rem; font-weight: 600;
-    color: #e5e7eb; text-transform: uppercase;
+    text-transform: uppercase;
     letter-spacing: .08em; margin: 1.2rem 0 .6rem;
-    border-left: 3px solid #2563eb; padding-left: .6rem;
+    padding-left: .6rem;
 }
+.section-title.industria  { color: #b8962e; border-left: 3px solid #b8962e; }
+.section-title.agro       { color: #8b4a2b; border-left: 3px solid #8b4a2b; }
+.section-title.servico    { color: #1a4a4a; border-left: 3px solid #1a4a4a; }
+.section-title.default    { color: #1a1a1a; border-left: 3px solid #e8826a; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -116,10 +123,10 @@ if "Oferta Senai" not in df.columns and "Oferta Senai" in obs.columns:
     if "Oferta Senai" not in df.columns:
         df = df.merge(obs_o, on="COD_Observatorio", how="left")
 
-# Concorrentes → QTD_CONCORRENTES
+# Concorrentes → CONCORRENTES
 conc_agg = (conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"]
                .nunique().reset_index()
-               .rename(columns={"INSTITUIÇÃO":"QTD_CONCORRENTES"}))
+               .rename(columns={"INSTITUIÇÃO":"CONCORRENTES"}))
 df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
 
 # ─────────────────────────────────────────────
@@ -133,7 +140,7 @@ def medidas(g):
     ev_bols  = g.loc[g["CONDIÇÃO"]=="GRATUITO","EVASAO_BOLS"].sum()
     vagas_   = g["VAGAS_ULTIM"].max()
     turma_   = g["TURMA"].max()
-    conc_    = g["QTD_CONCORRENTES"].max() if "QTD_CONCORRENTES" in g.columns else np.nan
+    conc_    = g["CONCORRENTES"].max() if "CONCORRENTES" in g.columns else np.nan
 
     mat_pag_aj  = 0 if (mat_pag==0 and mat_canc>0) else mat_pag
     mat_bols_aj = 0 if (mat_bols==0 and mat_canc>0) else mat_bols
@@ -150,7 +157,7 @@ def medidas(g):
         "EV. BOLS.":       ev_bols,
         "VAGAS":           vagas_,
         "TURMA":           turma_,
-        "QTD_CONCORRENTES":conc_,
+        "CONCORRENTES":    conc_,
         "MAT.PAG_AJUST":   mat_pag_aj,
         "MAT.BOLS_AJUST":  mat_bols_aj,
         "MAT.PAG_TRAT":    mat_pag_tr,
@@ -160,38 +167,41 @@ def medidas(g):
 # ─────────────────────────────────────────────
 # SIDEBAR – FILTROS
 # ─────────────────────────────────────────────
+TODOS = "Todos"
+
+def multiselect_com_todos(label, opcoes):
+    """Selectbox que exibe 'Todos' + itens. Retorna lista com todos os itens se 'Todos' selecionado."""
+    escolhas = st.multiselect(label, [TODOS] + list(opcoes), default=[TODOS])
+    if TODOS in escolhas or not escolhas:
+        return list(opcoes)
+    return escolhas
+
 with st.sidebar:
     st.markdown("### 🎛️ Filtros")
 
-    anos = sorted(df["ANO"].dropna().unique().tolist())
-    ano_sel = st.multiselect("Ano", anos, default=anos)
+    anos       = sorted(df["ANO"].dropna().unique())
+    ano_sel    = multiselect_com_todos("Ano", anos)
 
-    sems = sorted(df["SEMESTRE"].dropna().unique().tolist())
-    sem_sel = st.multiselect("Semestre", sems, default=sems)
+    sems       = sorted(df["SEMESTRE"].dropna().unique())
+    sem_sel    = multiselect_com_todos("Semestre", sems)
 
-    regionais = sorted(df["REGIONAL"].dropna().unique().tolist())
-    reg_sel = st.multiselect("Regional", regionais, default=regionais)
+    regionais  = sorted(df["REGIONAL"].dropna().unique())
+    reg_sel    = multiselect_com_todos("Regional", regionais)
 
-    unidades = sorted(df.loc[df["REGIONAL"].isin(reg_sel),"UNIDADE"].dropna().unique())
-    uni_sel = st.multiselect("Unidade", unidades, default=list(unidades))
+    unidades   = sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique())
+    uni_sel    = multiselect_com_todos("Unidade", unidades)
 
     modalidades = sorted(df["MODALIDADE"].dropna().unique())
-    mod_sel = st.multiselect("Modalidade", modalidades, default=list(modalidades))
+    mod_sel    = multiselect_com_todos("Modalidade", modalidades)
 
-    turnos = sorted(df["TURNO"].dropna().unique())
-    tur_sel = st.multiselect("Turno", turnos, default=list(turnos))
+    turnos     = sorted(df["TURNO"].dropna().unique())
+    tur_sel    = multiselect_com_todos("Turno", turnos)
 
-    if "CLASSIFICAÇÃO" in df.columns:
-        class_opts = sorted(df["CLASSIFICAÇÃO"].dropna().unique())
-        class_sel = st.multiselect("Classificação", class_opts, default=list(class_opts))
-    else:
-        class_sel = []
+    class_opts = sorted(df["CLASSIFICAÇÃO"].dropna().unique())
+    class_sel  = multiselect_com_todos("Classificação", class_opts)
 
-    if "Oferta Senai" in df.columns:
-        of_opts = sorted(df["Oferta Senai"].dropna().unique())
-        of_sel = st.multiselect("Oferta SENAI", of_opts, default=list(of_opts))
-    else:
-        of_sel = []
+    of_opts = sorted(df["Oferta Senai"].dropna().unique())
+    of_sel  = multiselect_com_todos("Oferta SENAI", of_opts)
 
 # ─────────────────────────────────────────────
 # APLICAR FILTROS
@@ -201,14 +211,18 @@ mask = (
     df["SEMESTRE"].isin(sem_sel) &
     df["UNIDADE"].isin(uni_sel) &
     df["MODALIDADE"].isin(mod_sel) &
-    df["TURNO"].isin(tur_sel)
+    df["TURNO"].isin(tur_sel) &
+    df["Esforço de Venda"].isin(df["Esforço de Venda"].unique()) &
+    df["Turmas Potenciais"].isin(df["Turmas Potenciais"].unique()) &
+    df["CLASSIFICAÇÃO"].isin(class_sel) if class_sel and "CLASSIFICAÇÃO" in df.columns else True &
+    df["Oferta Senai"].isin(of_sel) if of_sel and "Oferta Senai" in df.columns else True
 )
-if class_sel and "CLASSIFICAÇÃO" in df.columns:
-    mask &= df["CLASSIFICAÇÃO"].isin(class_sel)
-if of_sel and "Oferta Senai" in df.columns:
-    mask &= df["Oferta Senai"].isin(of_sel)
+# if class_sel and "CLASSIFICAÇÃO" in df.columns:
+#     mask &= df["CLASSIFICAÇÃO"].isin(class_sel)
+# if of_sel and "Oferta Senai" in df.columns:
+#     mask &= df["Oferta Senai"].isin(of_sel)
 
-dff = df[mask].copy()
+dff = df[mask].copy(deep=True).reset_index(drop=True)
 
 # ─────────────────────────────────────────────
 # CABEÇALHO
@@ -222,7 +236,7 @@ st.markdown('<div class="page-sub">SENAI Bahia · Planejamento de Cursos Técnic
 total_mat_pag  = dff.loc[dff["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
 total_mat_bols = dff.loc[dff["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
 total_ev_pag   = dff.loc[dff["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
-total_conc     = dff["QTD_CONCORRENTES"].max() if "QTD_CONCORRENTES" in dff.columns else 0
+total_conc     = dff["CONCORRENTES"].max() if "CONCORRENTES" in dff.columns else 0
 total_turmas   = dff["TURMA"].max()
 total_cursos   = dff["CURSO"].nunique()
 total_unidades = dff["UNIDADE"].nunique()
@@ -248,44 +262,31 @@ for col, label, val, accent in cards:
 # ─────────────────────────────────────────────
 # TABELA PRINCIPAL
 # ─────────────────────────────────────────────
-group_cols = ["ANO","SEMESTRE","UNIDADE","CURSO","MODALIDADE","TURNO"]
+group_cols = ["CURSO", "MODALIDADE", "Esforço de Venda", "Turmas Potenciais","TURNO"]
 if "CLASSIFICAÇÃO" in dff.columns: group_cols.append("CLASSIFICAÇÃO")
 if "Oferta Senai"  in dff.columns: group_cols.append("Oferta Senai")
-if "QTD_CONCORRENTES" in dff.columns: group_cols.append("QTD_CONCORRENTES")
+if "CONCORRENTES" in dff.columns: group_cols.append("CONCORRENTES")
 
-tabela = dff.groupby(group_cols, dropna=False).apply(medidas).reset_index()
+tabela = dff.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
 
-# Remover coluna duplicada se QTD_CONCORRENTES veio do groupby
-if "QTD_CONCORRENTES" in group_cols and "QTD_CONCORRENTES" in tabela.columns:
-    tabela = tabela.drop(columns=["QTD_CONCORRENTES_y"], errors="ignore")
-    tabela = tabela.rename(columns={"QTD_CONCORRENTES_x":"QTD_CONCORRENTES"}, errors="ignore")
+# Remover coluna duplicada se CONCORRENTES veio do groupby
+if "CONCORRENTES" in group_cols and "CONCORRENTES" in tabela.columns:
+    tabela = tabela.drop(columns=["CONCORRENTES_y"], errors="ignore")
+    tabela = tabela.rename(columns={"CONCORRENTES_x":"CONCORRENTES"}, errors="ignore")
 
 st.markdown('<div class="section-title">Detalhamento por Curso / Unidade</div>', unsafe_allow_html=True)
 
 # Formatação numérica
-int_cols = ["MAT. PAG.","MAT. BOLS.","MAT. CANC.","EV. PAG.","EV. BOLS.","VAGAS","TURMA","MAT.PAG_AJUST","MAT.BOLS_AJUST"]
+int_cols = ["VAGAS","TURMA", "MAT. PAG.","MAT. BOLS.","MAT. CANC.","EV. PAG.","EV. BOLS.", "MAT.PAG_AJUST","MAT.BOLS_AJUST"]
 for c in int_cols:
     if c in tabela.columns:
         tabela[c] = tabela[c].fillna(0).astype(int)
 
-st.dataframe(
+interactive_table(
     tabela,
-    use_container_width=True,
-    height=520,
-    column_config={
-        "ANO":           st.column_config.NumberColumn("Ano",    format="%d"),
-        "SEMESTRE":      st.column_config.NumberColumn("Sem.",   format="%d"),
-        "MAT. PAG.":     st.column_config.NumberColumn("Mat. Pag."),
-        "MAT. BOLS.":    st.column_config.NumberColumn("Mat. Bols."),
-        "MAT. CANC.":    st.column_config.NumberColumn("Mat. Canc."),
-        "EV. PAG.":      st.column_config.NumberColumn("Ev. Pag."),
-        "EV. BOLS.":     st.column_config.NumberColumn("Ev. Bols."),
-        "VAGAS":         st.column_config.NumberColumn("Vagas"),
-        "TURMA":         st.column_config.NumberColumn("Turma"),
-        "EV.PAG.MÉDIO":  st.column_config.NumberColumn("Ev.Méd.Pag.", format="%.1f"),
-        "MAT.PAG_TRAT":  st.column_config.NumberColumn("Mat.Pag.Trat."),
-        "QTD_CONCORRENTES": st.column_config.NumberColumn("Concorrentes"),
-    }
+    caption="Detalhamento por Curso / Unidade",
+    buttons=["copyHtml5", "csvHtml5", "excelHtml5"],
+    columnDefs=[{"className": "dt-center", "targets": "_all"}],
 )
 
 # ─────────────────────────────────────────────
@@ -293,7 +294,7 @@ st.dataframe(
 # ─────────────────────────────────────────────
 st.markdown('<div class="section-title">Exportação</div>', unsafe_allow_html=True)
 
-col_xl, col_csv, _ = st.columns([1,1,4])
+col_xl, _ = st.columns([1,4])
 
 @st.cache_data
 def to_excel(df):
@@ -312,15 +313,7 @@ with col_xl:
         data=to_excel(tabela),
         file_name="recomendacao_curso.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-    )
-with col_csv:
-    st.download_button(
-        "⬇️ Exportar CSV",
-        data=to_csv(tabela),
-        file_name="recomendacao_curso.csv",
-        mime="text/csv",
-        use_container_width=True,
+        use_container_width=True
     )
 
 st.caption(f"🔎 {len(tabela):,} linhas exibidas · Filtro aplicado sobre {len(dff):,} registros")
