@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 from itables.streamlit import interactive_table
+from itables import show
 from io import BytesIO
 
 warnings.filterwarnings("ignore")
@@ -129,39 +130,64 @@ conc_agg = (conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"]
                .rename(columns={"INSTITUIÇÃO":"CONCORRENTES"}))
 df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
 
-# ─────────────────────────────────────────────
-# MEDIDAS (equivalentes DAX)
-# ─────────────────────────────────────────────
 def medidas(g):
-    mat_pag  = g.loc[g["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
-    mat_bols = g.loc[g["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
-    mat_canc = g.loc[g["CONDIÇÃO"]=="CANCELADA","Valor"].sum()
-    ev_pag   = g.loc[g["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
-    ev_bols  = g.loc[g["CONDIÇÃO"]=="GRATUITO","EVASAO_BOLS"].sum()
-    vagas_   = g["VAGAS_ULTIM"].max()
-    turma_   = g["TURMA"].max()
-    conc_    = g["CONCORRENTES"].max() if "CONCORRENTES" in g.columns else np.nan
+    anos_ref = [2023, 2024, 2025, 2026]
+    
+    def gerar_serie_temporal(condicao, coluna, is_sum=True):
+        valores_num = []
+        for ano in anos_ref:
+            m_ano = (g["ANO"] == ano)
+            if condicao: m_ano &= (g["CONDIÇÃO"] == condicao)
+            
+            sub = g.loc[m_ano, coluna]
+            if sub.empty:
+                val = 0
+            else:
+                res = sub.sum() if is_sum else sub.max()
+                val = 0 if pd.isna(res) else res
+            valores_num.append(int(round(float(val))))
+        
+        if sum(valores_num) == 0:
+            return "-"
+        
+        strings_finais = []
+        for i, atual in enumerate(valores_num):
+            if atual == 0:
+                strings_finais.append("-")
+            else:
+                if i > 0:
+                    anterior = valores_num[i-1]
+                    if anterior > 0:
+                        if atual > anterior:
+                            # 🟢▲ para subida (Futurístico)
+                            strings_finais.append(f"🟢{atual}")
+                        elif atual < anterior:
+                            # 🔴▼ para descida
+                            strings_finais.append(f"🔴{atual}")
+                        else:
+                            strings_finais.append(str(atual))
+                    else:
+                        strings_finais.append(str(atual))
+                else:
+                    strings_finais.append(str(atual))
+        
+        return " | ".join(strings_finais)
 
-    mat_pag_aj  = 0 if (mat_pag==0 and mat_canc>0) else mat_pag
-    mat_bols_aj = 0 if (mat_bols==0 and mat_canc>0) else mat_bols
-    mat_pag_tr  = np.nan if mat_pag==0 else mat_pag
-
-    ev_pag_pos = g.loc[(g["CONDIÇÃO"]=="PAGANTE") & (g["EVASAO_PAG"]>0),"EVASAO_PAG"]
-    ev_pag_med = ev_pag_pos.mean() if len(ev_pag_pos) else np.nan
+    # Tratamento seguro para CONCORRENTES
+    conc_val = 0
+    if "CONCORRENTES" in g.columns:
+        res_conc = g["CONCORRENTES"].max()
+        conc_val = 0 if pd.isna(res_conc) else res_conc
 
     return pd.Series({
-        "MAT. PAG.":       mat_pag,
-        "MAT. BOLS.":      mat_bols,
-        "MAT. CANC.":      mat_canc,
-        "EV. PAG.":        ev_pag,
-        "EV. BOLS.":       ev_bols,
-        "VAGAS":           vagas_,
-        "TURMA":           turma_,
-        "CONCORRENTES":    conc_,
-        "MAT.PAG_AJUST":   mat_pag_aj,
-        "MAT.BOLS_AJUST":  mat_bols_aj,
-        "MAT.PAG_TRAT":    mat_pag_tr,
-        "EV.PAG.MÉDIO":    ev_pag_med,
+        "CONCORRENTES":             int(round(float(conc_val))),        
+        "MAT. PAG. (23|24|25|26)":  gerar_serie_temporal("PAGANTE", "Valor"),
+        "MAT. BOLS. (23|24|25|26)": gerar_serie_temporal("GRATUITO", "Valor"),
+        "MAT. CANC. (23|24|25|26)": gerar_serie_temporal("CANCELADA", "Valor"),
+        "EV. PAG. (23|24|25|26)":   gerar_serie_temporal("PAGANTE", "EVASAO_PAG"),
+        "EV. BOLS. (23|24|25|26)":  gerar_serie_temporal("GRATUITO", "EVASAO_BOLS"),
+        "VAGAS (23|24|25|26)":      gerar_serie_temporal(None, "VAGAS_ULTIM", False),
+        "TURMAS (23|24|25|26)":     gerar_serie_temporal(None, "TURMA", False)
     })
 
 # ─────────────────────────────────────────────
@@ -177,52 +203,53 @@ def multiselect_com_todos(label, opcoes):
     return escolhas
 
 with st.sidebar:
-    st.markdown("### 🎛️ Filtros")
+    st.markdown("### 🎛️ Centro de Comando")
+    st.divider()
 
-    anos       = sorted(df["ANO"].dropna().unique())
-    ano_sel    = multiselect_com_todos("Ano", anos)
+    # Bloco 1: Temporal
+    st.markdown("**📅 TEMPORAL**")
+    anos = sorted(df["ANO"].dropna().unique())
+    ano_sel = multiselect_com_todos("Ano", anos)
+    
+    sems = sorted(df["SEMESTRE"].dropna().unique())
+    sem_sel = multiselect_com_todos("Semestre", sems)
+    st.divider()
 
-    sems       = sorted(df["SEMESTRE"].dropna().unique())
-    sem_sel    = multiselect_com_todos("Semestre", sems)
-
-    regionais  = sorted(df["REGIONAL"].dropna().unique())
-    reg_sel    = multiselect_com_todos("Regional", regionais)
-
-    unidades   = sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique())
-    uni_sel    = multiselect_com_todos("Unidade", unidades)
-
+    # Bloco 2: Operacional
+    st.markdown("**⚙️ OPERACIONAL**")
+    turnos = sorted(df["TURNO"].dropna().unique())
+    tur_sel = multiselect_com_todos("Turno", turnos)
+    
     modalidades = sorted(df["MODALIDADE"].dropna().unique())
-    mod_sel    = multiselect_com_todos("Modalidade", modalidades)
+    mod_sel = multiselect_com_todos("Modalidade", modalidades)
+    st.divider()
 
-    turnos     = sorted(df["TURNO"].dropna().unique())
-    tur_sel    = multiselect_com_todos("Turno", turnos)
-
-    class_opts = sorted(df["CLASSIFICACAO"].dropna().unique())
-    class_sel  = multiselect_com_todos("Classificação", class_opts)
-
-    of_opts = sorted(df["OFERTA_SENAI"].dropna().unique())
-    of_sel  = multiselect_com_todos("Oferta SENAI", of_opts)
+    # Bloco 3: Geográfico
+    st.markdown("**🌎 GEOGRÁFICO**")
+    regionais = sorted(df["REGIONAL"].dropna().unique())
+    reg_sel = multiselect_com_todos("Regional", regionais)
+    
+    unidades = sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique())
+    uni_sel = multiselect_com_todos("Unidade", unidades)
+    st.divider()
 
 # ─────────────────────────────────────────────
 # APLICAR FILTROS
 # ─────────────────────────────────────────────
-mask = (
-    df["ANO"].isin(ano_sel) &
+
+mask_tabela = (
     df["SEMESTRE"].isin(sem_sel) &
     df["UNIDADE"].isin(uni_sel) &
     df["MODALIDADE"].isin(mod_sel) &
-    df["TURNO"].isin(tur_sel) &
-    df["Esforço de Venda"].isin(df["Esforço de Venda"].unique()) &
-    df["Turmas Potenciais"].isin(df["Turmas Potenciais"].unique()) &
-    df["CLASSIFICACAO"].isin(class_sel) if class_sel and "CLASSIFICACAO" in df.columns else True &
-    df["OFERTA_SENAI"].isin(of_sel) if of_sel and "OFERTA_SENAI" in df.columns else True
+    df["TURNO"].isin(tur_sel)
 )
-if class_sel and "CLASSIFICACAO" in df.columns:
-    mask &= df["CLASSIFICACAO"].isin(class_sel)
-if of_sel and "OFERTA_SENAI" in df.columns:
-    mask &= df["OFERTA_SENAI"].isin(of_sel)
 
-dff = df[mask].copy(deep=True).reset_index(drop=True)
+# Filtro que INCLUI o ANO (para os KPIs/Cards)
+mask_kpi = mask_tabela & df["ANO"].isin(ano_sel)
+
+# Dataframes distintos
+dff_tabela = df[mask_tabela].copy() # Esse vai para a função medidas
+dff_kpi = df[mask_kpi].copy()       # Esse vai para os totalizadores (Cards)
 
 # ─────────────────────────────────────────────
 # CABEÇALHO
@@ -233,13 +260,13 @@ st.markdown('<div class="page-sub">SENAI Bahia · Planejamento de Cursos Técnic
 # ─────────────────────────────────────────────
 # KPI CARDS
 # ─────────────────────────────────────────────
-total_mat_pag  = dff.loc[dff["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
-total_mat_bols = dff.loc[dff["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
-total_ev_pag   = dff.loc[dff["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
-total_conc     = dff["CONCORRENTES"].max() if "CONCORRENTES" in dff.columns else 0
-total_turmas   = dff["TURMA"].max()
-total_cursos   = dff["CURSO"].nunique()
-total_unidades = dff["UNIDADE"].nunique()
+total_mat_pag  = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
+total_mat_bols = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
+total_ev_pag   = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
+total_conc     = dff_kpi["CONCORRENTES"].max() if "CONCORRENTES" in dff_kpi.columns else 0
+total_turmas   = dff_kpi["TURMA"].max()
+total_cursos   = dff_kpi["CURSO"].nunique()
+total_unidades = dff_kpi["UNIDADE"].nunique()
 taxa_ev = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
 
 c1,c2,c3,c4,c5,c6 = st.columns(6)
@@ -262,58 +289,76 @@ for col, label, val, accent in cards:
 # ─────────────────────────────────────────────
 # TABELA PRINCIPAL
 # ─────────────────────────────────────────────
-group_cols = ["CURSO", "MODALIDADE", "Esforço de Venda", "Turmas Potenciais","TURNO"]
-if "CLASSIFICACAO" in dff.columns: group_cols.append("CLASSIFICACAO")
-if "OFERTA_SENAI"  in dff.columns: group_cols.append("OFERTA_SENAI")
-if "CONCORRENTES" in dff.columns: group_cols.append("CONCORRENTES")
 
-tabela = dff.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
+# Definimos as colunas de agrupamento (dimensões que não mudam)
+group_cols = ["CURSO", "MODALIDADE", "TURNO"]
+if "Esforço de Venda" in dff_tabela.columns: group_cols.append("Esforço de Venda")
+if "Turmas Potenciais" in dff_tabela.columns: group_cols.append("Turmas Potenciais")
+if "CLASSIFICAÇÃO" in dff_tabela.columns: group_cols.append("CLASSIFICAÇÃO")
+if "OFERTA_SENAI" in dff_tabela.columns: group_cols.append("OFERTA_SENAI")
 
-# Remover coluna duplicada se CONCORRENTES veio do groupby
-if "CONCORRENTES" in group_cols and "CONCORRENTES" in tabela.columns:
-    tabela = tabela.drop(columns=["CONCORRENTES_y"], errors="ignore")
-    tabela = tabela.rename(columns={"CONCORRENTES_x":"CONCORRENTES"}, errors="ignore")
+# Gerar a tabela aplicando a nova função de medidas
+tabela = dff_tabela.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
+tabela.rename(columns={"CLASSIFICACAO":"CLASSIFICAÇÃO", 
+                    "Esforço de Venda":"ESFORÇO DE VENDA", 
+                    "Turmas Potenciais":"TURMAS POTENCIAIS", 
+                    "OFERTA_SENAI":"OFERTA SENAI"}, inplace=True)
 
-st.markdown('<div class="section-title">Detalhamento por Curso / Unidade</div>', unsafe_allow_html=True)
+# Limpeza de colunas duplicadas por causa do merge/apply
+if "level_0" in tabela.columns: tabela = tabela.drop(columns=["level_0"])
 
-# Formatação numérica
-int_cols = ["VAGAS","TURMA", "MAT. PAG.","MAT. BOLS.","MAT. CANC.","EV. PAG.","EV. BOLS.", "MAT.PAG_AJUST","MAT.BOLS_AJUST"]
-for c in int_cols:
-    if c in tabela.columns:
-        tabela[c] = tabela[c].fillna(0).astype(int)
+st.markdown('<div class="section-title">Detalhamento Temporal por Curso / Unidade</div>', unsafe_allow_html=True)
+st.caption("Valores exibidos na sequência: **2023 | 2024 | 2025 | 2026**")
 
+# ─────────────────────────────────────────────
+# FILTROS DE TOPO (CLASSIFICAÇÃO E OFERTA)
+# ─────────────────────────────────────────────
+st.markdown("#### 🔍Observatório/PA")
+c_topo1, c_topo2 = st.columns([0.5, 1])
+
+with c_topo1:
+    class_opts = sorted(df["CLASSIFICACAO"].dropna().unique())
+    class_sel = st.multiselect("🏷️  Preditiva: Classificação", class_opts, placeholder="Todas as Classificações")
+    if not class_sel: class_sel = list(class_opts)
+
+with c_topo2:
+    # Flag Sim/Não (Se não selecionar nada, traz todos)
+    of_val = st.pills(
+        "🚀 Oferta SENAI", 
+        options=["Sim", "Não"], 
+        selection_mode="single"
+    )
+    of_opts = sorted(df["OFERTA_SENAI"].dropna().unique())
+    of_sel = [of_val] if of_val else list(of_opts)
+
+# Aplicação dos filtros finais antes do groupby
+mask_tabela &= dff_tabela["CLASSIFICACAO"].isin(class_sel)
+mask_tabela &= dff_tabela["OFERTA_SENAI"].isin(of_sel)
+
+# Dataframe que será usado na função medidas
+tabela_final = dff_tabela[mask_tabela].copy()
+# Agora chame o groupby e a função medidas usando tabela_final...
+tabela_exibicao = tabela_final.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
+
+# Exibição com itables (interactive_table)
 interactive_table(
     tabela,
-    caption="Detalhamento por Curso / Unidade",
+    caption="Tabela de Recomendação - SENAI/BA",
     buttons=["copyHtml5", "csvHtml5", "excelHtml5"],
-    columnDefs=[{"className": "dt-center", "targets": "_all"}],
+    paging=False,          # Remove a paginação (mostra tudo)
+    scrollY="600px",       # Altura da caixa de visualização
+    scrollCollapse=True,
+    scrollX=True,          # Scroll horizontal para telas menores
+    columnDefs=[{"className": "dt-center", "targets": "_all"}], # Centraliza tudo
 )
-
+st.divider()
 # ─────────────────────────────────────────────
 # EXPORTAÇÃO
 # ─────────────────────────────────────────────
 st.markdown('<div class="section-title">Exportação</div>', unsafe_allow_html=True)
 
-col_xl, _ = st.columns([1,4])
-
-@st.cache_data
-def to_excel(df):
-    buf = BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as w:
-        df.to_excel(w, index=False, sheet_name="Recomendacao")
-    return buf.getvalue()
-
-@st.cache_data
-def to_csv(df):
-    return df.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
-
-with col_xl:
-    st.download_button(
-        "⬇️ Exportar Excel",
-        data=to_excel(tabela),
-        file_name="recomendacao_curso.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
-    )
-
-st.caption(f"🔎 {len(tabela):,} linhas exibidas · Filtro aplicado sobre {len(dff):,} registros")
+# INSERI TABELA DE APROVEITAMENTO BOLSA
+# AJUSTAR OS CARDS PARA EVASÃO PAGANTES E EVAÇÃO BOLSITA E MATRICULA PAGANTE E MATRIOCULA BOLSISTA
+# # VER CALCULO DE VAGA DE BOLSISTA
+# INSERIT TABELA DE TENDÊNCIA DE MATRICULAS
+# TABELA DE RECOMENDAÇÃO E A TABELA DE VIABILIDADE DE TURMA
