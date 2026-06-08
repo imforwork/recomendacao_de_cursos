@@ -197,10 +197,10 @@ with st.sidebar:
     turnos     = sorted(df["TURNO"].dropna().unique())
     tur_sel    = multiselect_com_todos("Turno", turnos)
 
-    class_opts = sorted(df["CLASSIFICAÇÃO"].dropna().unique())
+    class_opts = sorted(df["CLASSIFICACAO"].dropna().unique())
     class_sel  = multiselect_com_todos("Classificação", class_opts)
 
-    of_opts = sorted(df["Oferta Senai"].dropna().unique())
+    of_opts = sorted(df["OFERTA_SENAI"].dropna().unique())
     of_sel  = multiselect_com_todos("Oferta SENAI", of_opts)
 
 # ─────────────────────────────────────────────
@@ -214,13 +214,13 @@ mask = (
     df["TURNO"].isin(tur_sel) &
     df["Esforço de Venda"].isin(df["Esforço de Venda"].unique()) &
     df["Turmas Potenciais"].isin(df["Turmas Potenciais"].unique()) &
-    df["CLASSIFICAÇÃO"].isin(class_sel) if class_sel and "CLASSIFICAÇÃO" in df.columns else True &
-    df["Oferta Senai"].isin(of_sel) if of_sel and "Oferta Senai" in df.columns else True
+    df["CLASSIFICACAO"].isin(class_sel) if class_sel and "CLASSIFICACAO" in df.columns else True &
+    df["OFERTA_SENAI"].isin(of_sel) if of_sel and "OFERTA_SENAI" in df.columns else True
 )
-# if class_sel and "CLASSIFICAÇÃO" in df.columns:
-#     mask &= df["CLASSIFICAÇÃO"].isin(class_sel)
-# if of_sel and "Oferta Senai" in df.columns:
-#     mask &= df["Oferta Senai"].isin(of_sel)
+if class_sel and "CLASSIFICACAO" in df.columns:
+    mask &= df["CLASSIFICACAO"].isin(class_sel)
+if of_sel and "OFERTA_SENAI" in df.columns:
+    mask &= df["OFERTA_SENAI"].isin(of_sel)
 
 dff = df[mask].copy(deep=True).reset_index(drop=True)
 
@@ -263,8 +263,8 @@ for col, label, val, accent in cards:
 # TABELA PRINCIPAL
 # ─────────────────────────────────────────────
 group_cols = ["CURSO", "MODALIDADE", "Esforço de Venda", "Turmas Potenciais","TURNO"]
-if "CLASSIFICAÇÃO" in dff.columns: group_cols.append("CLASSIFICAÇÃO")
-if "Oferta Senai"  in dff.columns: group_cols.append("Oferta Senai")
+if "CLASSIFICACAO" in dff.columns: group_cols.append("CLASSIFICACAO")
+if "OFERTA_SENAI"  in dff.columns: group_cols.append("OFERTA_SENAI")
 if "CONCORRENTES" in dff.columns: group_cols.append("CONCORRENTES")
 
 tabela = dff.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
