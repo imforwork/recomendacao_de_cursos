@@ -436,11 +436,11 @@ c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
 
 metrics = [
     (c1, "Matrículas Pagante", f"{int(at_mp)}", fmt_delta(at_mp, ant_mp), "#004587"),
-    (c2, "Matrículas Bolsista", f"{int(at_mb)}", fmt_delta(at_mb, ant_mb), "#32145a"),
-    (c3, "Evasão Pagante", f"{int(at_ep)}", fmt_delta(at_ep, ant_ep, invert=True), "#dc2626"),
-    (c4, "Evasão Bolsista", f"{int(at_eb)}", fmt_delta(at_eb, ant_eb, invert=True), "#dc2626"),
-    (c5, "Taxa Evasão Pag.", f"{at_tp:.1f}%", fmt_delta(at_tp, ant_tp, invert=True), "#d97706"),
-    (c6, "Taxa Evasão Bols.", f"{at_tb:.1f}%", fmt_delta(at_tb, ant_tb, invert=True), "#C2006B"),
+    (c2, "Matrículas Bolsista", f"{int(at_mb)}", fmt_delta(at_mb, ant_mb), "#004587"),
+    (c3, "Evasão Pagante", f"{int(at_ep)}", fmt_delta(at_ep, ant_ep, invert=True), "#dc8d26"),
+    (c4, "Taxa Evasão Pag.", f"{at_tp:.1f}%", fmt_delta(at_tp, ant_tp, invert=True), "#dc8d26"),
+    (c5, "Evasão Bolsista", f"{int(at_eb)}", fmt_delta(at_eb, ant_eb, invert=True), "#69280D"),
+    (c6, "Taxa Evasão Bols.", f"{at_tb:.1f}%", fmt_delta(at_tb, ant_tb, invert=True), "#69280D"),
     (c7, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
 ]
 
