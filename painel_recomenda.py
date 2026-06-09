@@ -339,7 +339,9 @@ tabela.rename(columns={"CLASSIFICACAO":"CLASSIFICAÇÃO",
 if "level_0" in tabela.columns: tabela = tabela.drop(columns=["level_0"])
 
 st.divider()
-# st.markdown('<div class="section-title">Detalhamento Temporal por Curso / Unidade</div>', unsafe_allow_html=True)
+# st.markdown('<div class="page-title">📊 RECOMENDAÇÃO DE CURSO</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="page-title">Detalhamento Temporal por Curso / Unidade</div>', unsafe_allow_html=True)
 st.caption("#### Valores exibidos na sequência: **2023 | 2024 | 2025 | 2026**")
 
 # ─────────────────────────────────────────────
