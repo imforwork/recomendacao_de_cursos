@@ -164,23 +164,24 @@ def medidas(g):
     def gerar_serie_temporal(condicao, coluna, is_sum=True):
         valores_num = []
         for ano in anos_ref:
-            # Filtro preciso por ano e condição
             m_ano = (g["ANO"] == ano)
+            # Se houver condição (PAGANTE/GRATUITO), aplica o filtro
             if condicao: 
                 m_ano &= (g["CONDIÇÃO"] == condicao)
             
+            # Aqui estava o erro: 'coluna' deve ser o nome da coluna no DF (ex: 'Valor' ou 'VAGAS_ULTIM')
             sub = g.loc[m_ano, coluna]
             
             if sub.empty:
                 val = 0
             else:
-                # Agora o sum() será real, pois as linhas não estão duplicadas
                 res = sub.sum() if is_sum else sub.max()
                 val = 0 if pd.isna(res) else res
             
             valores_num.append(int(round(float(val))))
         
-        if sum(valores_num) == 0: return "-"
+        if sum(valores_num) == 0:
+            return "-"
         
         strings_finais = []
         for i, atual in enumerate(valores_num):
@@ -213,8 +214,8 @@ def medidas(g):
         "MAT. CANC.": gerar_serie_temporal("CANCELADA", "Valor"),
         "EV. PAG.":   gerar_serie_temporal("PAGANTE", "EVASAO_PAG"),
         "EV. BOLS.":  gerar_serie_temporal("GRATUITO", "EVASAO_BOLS"),
-        "VAGAS":      gerar_serie_temporal(None, "VAGAS_ULTIM", False),
-        "TURMAS":     gerar_serie_temporal(None, "TURMA", False)
+        "VAGAS":      gerar_serie_temporal(None, "VAGAS_ULTIM", is_sum=False),
+        "TURMAS":     gerar_serie_temporal(None, "TURMA", is_sum=False)
     })
 
 # ─────────────────────────────────────────────
@@ -264,7 +265,7 @@ def multiselect_com_seletor(label, opcoes, placeholder):
 #     return escolhas
 
 with st.sidebar:
-    st.markdown("### ✦ FILTROS:")
+    st.markdown("### ✦ FILTROS")
     st.divider()
 
     # Bloco 1: Temporal
