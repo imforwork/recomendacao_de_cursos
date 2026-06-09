@@ -299,13 +299,20 @@ with st.sidebar:
     tur_sel = multiselect_com_seletor(
         "TURNO", 
         sorted(df["TURNO"].dropna().unique()), 
-        "Todos os Turnos"
-    )
+        "Todos os Turnos")
+    
     mod_sel = multiselect_com_seletor(
         "MODALIDADE", 
         sorted(df["MODALIDADE"].dropna().unique()), 
         "Todas as Modalidades"
     )
+
+    curso_sel = multiselect_com_seletor(
+        "CURSO", 
+        sorted(df["CURSO"].dropna().unique()), 
+        "Todas os Cursos"
+    )
+
     st.divider()
 
 # ─────────────────────────────────────────────
