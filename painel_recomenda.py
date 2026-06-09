@@ -242,7 +242,17 @@ with st.sidebar:
     sem_sel = multiselect_com_todos("Semestre", sems)
     st.divider()
 
-    # Bloco 2: Operacional
+    # Bloco 2: Geográfico
+    st.markdown("**🌎 GEOGRÁFICO**")
+    regionais = sorted(df["REGIONAL"].dropna().unique())
+    reg_sel = multiselect_com_todos("Regional", regionais)
+    
+    unidades = sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique())
+    uni_sel = multiselect_com_todos("Unidade", unidades)
+    st.divider()
+
+
+    # Bloco 3 Educacional
     st.markdown("**📚 EDUCACIONAL**")
     turnos = sorted(df["TURNO"].dropna().unique())
     tur_sel = multiselect_com_todos("Turno", turnos)
@@ -254,14 +264,7 @@ with st.sidebar:
     curso_sel = multiselect_com_todos("Curso", cursos_)
     st.divider()
 
-    # Bloco 3: Geográfico
-    st.markdown("**🌎 GEOGRÁFICO**")
-    regionais = sorted(df["REGIONAL"].dropna().unique())
-    reg_sel = multiselect_com_todos("Regional", regionais)
-    
-    unidades = sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique())
-    uni_sel = multiselect_com_todos("Unidade", unidades)
-    st.divider()
+
 
 # ─────────────────────────────────────────────
 # APLICAR FILTROS
