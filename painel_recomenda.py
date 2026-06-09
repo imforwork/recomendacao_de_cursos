@@ -404,7 +404,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Exibição
-c1, c2, c3, c4, c5, c6, c7 = st.columns(6)
+c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
 
 metrics = [
     (c1, "Matrículas Pagante", f"{int(mat_pag_total)}", delta_pag, "#004587"),
