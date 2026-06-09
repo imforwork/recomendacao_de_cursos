@@ -222,12 +222,46 @@ def medidas(g):
 # ─────────────────────────────────────────────
 TODOS = "Todos"
 
-def multiselect_com_todos(label, opcoes):
-    """Selectbox que exibe 'Todos' + itens. Retorna lista com todos os itens se 'Todos' selecionado."""
-    escolhas = st.multiselect(label, [TODOS] + list(opcoes), default=[TODOS])
-    if TODOS in escolhas or not escolhas:
-        return list(opcoes)
-    return escolhas
+# ─────────────────────────────────────────────
+# ESTILO CUSTOMIZADO (Borda e Dropdown)
+# ─────────────────────────────────────────────
+st.markdown("""
+<style>
+    /* Estilização da borda de foco do multiselect (igual à foto) */
+    div[data-baseweb="select"] > div:focus-within {
+        border-color: #ff4b4b !important;
+        box-shadow: 0 0 0 1px #ff4b4b !important;
+    }
+    /* Ajuste de fonte e placeholder */
+    .stMultiSelect div[data-baseweb="select"] {
+        border-radius: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+def multiselect_com_seletor(label, opcoes, placeholder):
+    """
+    Cria um multiselect que inclui 'Select all' no topo.
+    """
+    opcoes_list = list(opcoes)
+    # Adiciona "Select all" como primeira opção
+    selecionados = st.multiselect(
+        label, 
+        options=["Select all"] + opcoes_list, 
+        placeholder=placeholder
+    )
+    
+    # Lógica: Se "Select all" for clicado ou nada for selecionado, retorna todas as opções
+    if "Select all" in selecionados or not selecionados:
+        return opcoes_list
+    return selecionados
+
+# def multiselect_com_todos(label, opcoes):
+#     """Selectbox que exibe 'Todos' + itens. Retorna lista com todos os itens se 'Todos' selecionado."""
+#     escolhas = st.multiselect(label, [TODOS] + list(opcoes), default=[TODOS])
+#     if TODOS in escolhas or not escolhas:
+#         return list(opcoes)
+#     return escolhas
 
 with st.sidebar:
     st.markdown("### 🎛️ Centro de Comando")
@@ -235,36 +269,44 @@ with st.sidebar:
 
     # Bloco 1: Temporal
     st.markdown("**📅 TEMPORAL**")
-    anos = sorted(df["ANO"].dropna().unique())
-    ano_sel = multiselect_com_todos("Ano", anos)
-    
-    sems = sorted(df["SEMESTRE"].dropna().unique())
-    sem_sel = multiselect_com_todos("Semestre", sems)
+    ano_sel = multiselect_com_seletor(
+        "ANO", 
+        sorted(df["ANO"].dropna().unique()), 
+        "Todos os Anos"
+    )
+    sem_sel = multiselect_com_seletor(
+        "SEMESTRE", 
+        sorted(df["SEMESTRE"].dropna().unique()), 
+        "Todos os Semestres"
+    )
     st.divider()
 
-    # Bloco 2: Geográfico
+    # Bloco 3: Geográfico
     st.markdown("**🌎 GEOGRÁFICO**")
-    regionais = sorted(df["REGIONAL"].dropna().unique())
-    reg_sel = multiselect_com_todos("Regional", regionais)
-    
-    unidades = sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique())
-    uni_sel = multiselect_com_todos("Unidade", unidades)
-    st.divider()
+    reg_sel = multiselect_com_seletor(
+        "REGIONAL", 
+        sorted(df["REGIONAL"].dropna().unique()), 
+        "Todas as Regionais"
+    )
+    uni_sel = multiselect_com_seletor(
+        "UNIDADE", 
+        sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique()), 
+        "Todas as Unidades"
+    )
 
-
-    # Bloco 3 Educacional
+    # Bloco 2: Operacional
     st.markdown("**📚 EDUCACIONAL**")
-    turnos = sorted(df["TURNO"].dropna().unique())
-    tur_sel = multiselect_com_todos("Turno", turnos)
-    
-    modalidades = sorted(df["MODALIDADE"].dropna().unique())
-    mod_sel = multiselect_com_todos("Modalidade", modalidades)
-
-    cursos_ = sorted(df["CURSO"].dropna().unique())
-    curso_sel = multiselect_com_todos("Curso", cursos_)
+    tur_sel = multiselect_com_seletor(
+        "TURNO", 
+        sorted(df["TURNO"].dropna().unique()), 
+        "Todos os Turnos"
+    )
+    mod_sel = multiselect_com_seletor(
+        "MODALIDADE", 
+        sorted(df["MODALIDADE"].dropna().unique()), 
+        "Todas as Modalidades"
+    )
     st.divider()
-
-
 
 # ─────────────────────────────────────────────
 # APLICAR FILTROS
