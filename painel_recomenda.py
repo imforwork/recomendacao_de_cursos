@@ -103,31 +103,31 @@ bd, conc, ev, vagas, classif, oferta, obs = load_data()
 # ─────────────────────────────────────────────
 # JOINS
 # ─────────────────────────────────────────────
-# Evasão → BD
+
+# 1. Evasão -> Já está agrupado por chave única (OK)
 ev_agg = (ev.groupby("COD_Base_de_Evasao")
             .agg(EVASAO_PAG=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="PAGANTE"].sum()),
                  EVASAO_BOLS=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="GRATUITO"].sum()))
             .reset_index())
-
 df = bd.merge(ev_agg, on="COD_Base_de_Evasao", how="left")
 
-# Vagas → BD
-vagas_m = vagas[["COD_VAGAS","VAGAS_2"]].rename(columns={"VAGAS_2":"VAGAS_ULTIM"})
+# 2. Vagas -> Garantir que COD_VAGAS seja único para não duplicar Valor
+vagas_m = vagas[["COD_VAGAS", "VAGAS_2"]].rename(columns={"VAGAS_2": "VAGAS_ULTIM"}).drop_duplicates(subset=["COD_VAGAS"])
 df = df.merge(vagas_m, on="COD_VAGAS", how="left")
 
-# Observatório → CLASSIFICAÇÃO / Oferta Senai
-if "CLASSIFICAÇÃO" not in df.columns and "CLASSIFICAÇÃO" in obs.columns:
-    obs_m = obs[["COD_Observatorio","CLASSIFICAÇÃO"]].drop_duplicates()
-    df = df.merge(obs_m, on="COD_Observatorio", how="left")
-if "Oferta Senai" not in df.columns and "Oferta Senai" in obs.columns:
-    obs_o = obs[["COD_Observatorio","Oferta Senai"]].drop_duplicates()
-    if "Oferta Senai" not in df.columns:
-        df = df.merge(obs_o, on="COD_Observatorio", how="left")
+# 3. Observatório -> Já possui drop_duplicates (OK)
+obs_m = obs[["COD_Observatorio", "CLASSIFICAÇÃO", "Oferta Senai"]].drop_duplicates(subset=["COD_Observatorio"])
+df = df.merge(obs_m, on="COD_Observatorio", how="left")
 
-# Concorrentes → CONCORRENTES
-if "COD_Concorrentes" in conc.columns:
-    conc_para_join = conc[["COD_Concorrentes", "INSTITUIÇÃO"]].drop_duplicates()
-    df = df.merge(conc_para_join, on="COD_Concorrentes", how="left")
+# 4. Concorrentes -> CÁLCULO PRÉVIO PARA EVITAR EXPLOSÃO DE LINHAS
+# Agrupamos por chave e contamos as instituições únicas ANTES do merge
+conc_agg = (conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"]
+               .nunique() 
+               .reset_index()
+               .rename(columns={"INSTITUIÇÃO": "QTD_CONCORRENTES"}))
+
+# Agora o merge é 1 para 1 ou N para 1, sem duplicar as linhas da fato (bd)
+df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
 
 def medidas(g):
     anos_ref = [2023, 2024, 2025, 2026]
@@ -135,15 +135,20 @@ def medidas(g):
     def gerar_serie_temporal(condicao, coluna, is_sum=True):
         valores_num = []
         for ano in anos_ref:
+            # Filtro preciso por ano e condição
             m_ano = (g["ANO"] == ano)
-            if condicao: m_ano &= (g["CONDIÇÃO"] == condicao)
+            if condicao: 
+                m_ano &= (g["CONDIÇÃO"] == condicao)
             
             sub = g.loc[m_ano, coluna]
+            
             if sub.empty:
                 val = 0
             else:
+                # Agora o sum() será real, pois as linhas não estão duplicadas
                 res = sub.sum() if is_sum else sub.max()
                 val = 0 if pd.isna(res) else res
+            
             valores_num.append(int(round(float(val))))
         
         if sum(valores_num) == 0: return "-"
@@ -168,14 +173,12 @@ def medidas(g):
                     strings_finais.append(str(atual))
         return " | ".join(strings_finais)
 
-    # --- CÁLCULO DE CONCORRENTES (Fiel à sua solicitação) ---
-    conc_val = 0
-
-    if "INSTITUIÇÃO" in g.columns:
-        conc_val = g["INSTITUIÇÃO"].nunique()
+    # Pegamos o valor máximo da coluna de contagem de concorrentes do grupo
+    conc_val = g["QTD_CONCORRENTES"].max() if "QTD_CONCORRENTES" in g.columns else 0
+    conc_val = 0 if pd.isna(conc_val) else conc_val
 
     return pd.Series({
-        "CONCORRENTES":             int(conc_val), # Agora é o somatório de únicos
+        "CONCORRENTES":             int(conc_val),
         "MAT. PAG. (23|24|25|26)":  gerar_serie_temporal("PAGANTE", "Valor"),
         "MAT. BOLS. (23|24|25|26)": gerar_serie_temporal("GRATUITO", "Valor"),
         "MAT. CANC. (23|24|25|26)": gerar_serie_temporal("CANCELADA", "Valor"),
@@ -335,7 +338,6 @@ tabela_final = dff_tabela[mask_tabela].copy()
 # Agora chame o groupby e a função medidas usando tabela_final...
 tabela_exibicao = tabela_final.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
 
-st.write(f"Linhas com Concorrente: {dff_tabela['INSTITUIÇÃO'].notna().sum()}")
 # Exibição com itables (interactive_table)
 interactive_table(
     tabela_exibicao, # Resultado do apply(medidas)
