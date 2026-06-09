@@ -338,13 +338,14 @@ tabela.rename(columns={"CLASSIFICACAO":"CLASSIFICAÇÃO",
 # Limpeza de colunas duplicadas por causa do merge/apply
 if "level_0" in tabela.columns: tabela = tabela.drop(columns=["level_0"])
 
-st.markdown('<div class="section-title">Detalhamento Temporal por Curso / Unidade</div>', unsafe_allow_html=True)
-st.caption("Valores exibidos na sequência: **2023 | 2024 | 2025 | 2026**")
+st.divider()
+# st.markdown('<div class="section-title">Detalhamento Temporal por Curso / Unidade</div>', unsafe_allow_html=True)
+st.caption("#### Valores exibidos na sequência: **2023 | 2024 | 2025 | 2026**")
 
 # ─────────────────────────────────────────────
 # FILTROS DE TOPO (CLASSIFICAÇÃO E OFERTA)
 # ─────────────────────────────────────────────
-st.markdown("#### 🔍Observatório/PA")
+st.markdown("##### 🔍Observatório/PA")
 c_topo1, c_topo2 = st.columns([0.5, 1])
 
 with c_topo1:
