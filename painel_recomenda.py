@@ -264,7 +264,7 @@ def multiselect_com_seletor(label, opcoes, placeholder):
 #     return escolhas
 
 with st.sidebar:
-    st.markdown("### 🎛️ Centro de Comando")
+    st.markdown("### ✦ FILTROS:")
     st.divider()
 
     # Bloco 1: Temporal
@@ -443,7 +443,6 @@ def fmt_delta(at, ant, invert=False):
 delta_pag = fmt_delta(val_pag_atual, val_pag_prev)
 delta_bols = fmt_delta(val_bols_atual, val_bols_prev)
 
-
 # ─────────────────────────────────────────────
 # EXIBIÇÃO DOS CARDS
 # ─────────────────────────────────────────────
@@ -505,7 +504,6 @@ for col, label, val, delta, color in metrics:
                 <div class="kpi-delta">{delta}</div>
             </div>
         """, unsafe_allow_html=True)
-
 
 
 # ─────────────────────────────────────────────
@@ -582,6 +580,6 @@ st.markdown('<div class="section-title">Exportação</div>', unsafe_allow_html=T
 
 # INSERI TABELA DE APROVEITAMENTO BOLSA
 # AJUSTAR OS CARDS PARA EVASÃO PAGANTES E EVAÇÃO BOLSITA E MATRICULA PAGANTE E MATRIOCULA BOLSISTA
-# # VER CALCULO DE VAGA DE BOLSISTA
+# VER CALCULO DE VAGA DE BOLSISTA
 # INSERIT TABELA DE TENDÊNCIA DE MATRICULAS
 # TABELA DE RECOMENDAÇÃO E A TABELA DE VIABILIDADE DE TURMA
