@@ -170,12 +170,12 @@ def medidas(g):
         return " | ".join(strings_finais)
 
     # --- CÁLCULO DE CONCORRENTES (Fiel à sua solicitação) ---
+    conc_val = 0
+    
     if "INSTITUIÇÃO" in g.columns and g["INSTITUIÇÃO"].notna().any():
         conc_val = g["INSTITUIÇÃO"].nunique()
         # nunique() faz o somatório de valores únicos (distinct count)
         conc_val = g["INSTITUIÇÃO"].nunique()
-    else:
-        conc_val = 0
 
     return pd.Series({
         "CONCORRENTES":             int(round(float(conc_val))), # Agora é o somatório de únicos
