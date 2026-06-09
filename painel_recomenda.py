@@ -125,10 +125,11 @@ if "Oferta Senai" not in df.columns and "Oferta Senai" in obs.columns:
         df = df.merge(obs_o, on="COD_Observatorio", how="left")
 
 # Concorrentes → CONCORRENTES
-conc_agg = (conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"]
-               .nunique().reset_index()
-               .rename(columns={"INSTITUIÇÃO":"CONCORRENTES"}))
-df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
+# conc_agg = (conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"]
+#                .nunique().reset_index()
+#                .rename(columns={"INSTITUIÇÃO":"CONCORRENTES"}))
+# df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
+
 if "COD_Concorrentes" in conc.columns:
     conc_para_join = conc[["COD_Concorrentes", "INSTITUIÇÃO"]].drop_duplicates()
     df = df.merge(conc_para_join, on="COD_Concorrentes", how="left")
