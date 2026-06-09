@@ -257,13 +257,6 @@ def multiselect_com_seletor(label, opcoes, placeholder):
         return opcoes_list
     return selecionados
 
-# def multiselect_com_todos(label, opcoes):
-#     """Selectbox que exibe 'Todos' + itens. Retorna lista com todos os itens se 'Todos' selecionado."""
-#     escolhas = st.multiselect(label, [TODOS] + list(opcoes), default=[TODOS])
-#     if TODOS in escolhas or not escolhas:
-#         return list(opcoes)
-#     return escolhas
-
 with st.sidebar:
     st.markdown("### ✦ FILTROS")
     st.divider()
@@ -519,14 +512,14 @@ if "CLASSIFICAÇÃO" in dff_tabela.columns: group_cols.append("CLASSIFICAÇÃO")
 if "OFERTA_SENAI" in dff_tabela.columns: group_cols.append("OFERTA_SENAI")
 
 # Gerar a tabela aplicando a nova função de medidas
-tabela = dff_tabela.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
-tabela.rename(columns={"CLASSIFICACAO":"CLASSIFICAÇÃO", 
+dff_tabela = dff_tabela.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
+dff_tabela.rename(columns={"CLASSIFICACAO":"CLASSIFICAÇÃO", 
                     "Esforço de Venda":"ESFORÇO DE VENDA", 
                     "Turmas Potenciais":"TURMAS POTENCIAIS", 
                     "OFERTA_SENAI":"OFERTA SENAI"}, inplace=True)
 
 # Limpeza de colunas duplicadas por causa do merge/apply
-if "level_0" in tabela.columns: tabela = tabela.drop(columns=["level_0"])
+if "level_0" in dff_tabela.columns: dff_tabela = dff_tabela.drop(columns=["level_0"])
 
 st.divider()
 # st.markdown('<div class="page-title">📊 RECOMENDAÇÃO DE CURSO</div>', unsafe_allow_html=True)
