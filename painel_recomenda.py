@@ -316,18 +316,6 @@ taxa_ev_bols = (total_ev_bols / total_mat_bols * 100) if total_mat_bols > 0 else
 prev_mat_pag = dff_prev.loc[dff_prev["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
 prev_mat_bols = dff_prev.loc[dff_prev["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
 
-# # Cálculo das Variações (%)
-# def calc_delta(atual, anterior):
-#     if anterior > 0:
-#         res = ((atual - anterior) / anterior) * 100
-#         cor = "green" if res >= 0 else "red"
-#         seta = "▲" if res >= 0 else "▼"
-#         return f"<span style='color:{cor}; font-size: 0.8rem;'>{seta} {res:.1f}%</span>"
-#     return "<span style='color:gray; font-size: 0.8rem;'>--</span>"
-
-# delta_pag = calc_delta(total_mat_pag, prev_mat_pag)
-# delta_bols = calc_delta(total_mat_bols, prev_mat_bols)
-
 # ─────────────────────────────────────────────
 # LÓGICA DE MÉTRICAS E DELTAS (RETIFICADA)
 # ─────────────────────────────────────────────
@@ -419,12 +407,12 @@ st.markdown("""
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 
 metrics = [
-    (c1, "Matrículas Pagantes", f"{int(mat_pag_total)}", delta_pag, "#004587"),
-    (c2, "Matrículas Bolsistas", f"{int(mat_bols_total)}", delta_bols, "#32145a"),
-    (c3, "Concorrentes", f"{int(total_conc)}", "", "#00A199"),
+    (c1, "Matrículas Pagante", f"{int(mat_pag_total)}", delta_pag, "#004587"),
+    (c2, "Matrículas Bolsista", f"{int(mat_bols_total)}", delta_bols, "#32145a"),
     (c4, "Evasão Pagante", f"{int(total_ev_pag)}", "", "#E30613"),
-    (c5, "Taxa Evasão P.", f"{taxa_ev_pag:.1f}%", "", "#F39200"),
-    (c6, "Taxa Evasão B.", f"{taxa_ev_bols:.1f}%", "", "#C2006B")
+    (c5, "Taxa Evasão Pagante.", f"{taxa_ev_pag:.1f}%", "", "#F39200"),
+    (c6, "Taxa Evasão Bolsista.", f"{taxa_ev_bols:.1f}%", "", "#C2006B"),
+    (c3, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
 ]
 
 for col, label, val, delta, color in metrics:
