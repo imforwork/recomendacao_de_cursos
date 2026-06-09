@@ -213,7 +213,7 @@ def medidas(g):
         "MAT. CANC.": gerar_serie_temporal("CANCELADA", "Valor"),
         "EV. PAG.":   gerar_serie_temporal("PAGANTE", "EVASAO_PAG"),
         "EV. BOLS.":  gerar_serie_temporal("GRATUITO", "EVASAO_BOLS"),
-        "VAGAS":      gerar_serie_temporal(None, "VAGAS_ULTIM", False),
+        "VAGAS":      gerar_serie_temporal(None, "PAGANTE", "VAGAS_ULTIM"),
         "TURMAS":     gerar_serie_temporal(None, "TURMA", False)
     })
 
