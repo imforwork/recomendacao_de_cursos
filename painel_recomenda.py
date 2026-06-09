@@ -404,15 +404,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Exibição
-c1, c2, c3, c4, c5, c6 = st.columns(6)
+c1, c2, c3, c4, c5, c6, c7 = st.columns(6)
 
 metrics = [
     (c1, "Matrículas Pagante", f"{int(mat_pag_total)}", delta_pag, "#004587"),
     (c2, "Matrículas Bolsista", f"{int(mat_bols_total)}", delta_bols, "#32145a"),
     (c3, "Evasão Pagante", f"{int(total_ev_pag)}", "", "#E30613"),
-    (c4, "Taxa Evasão Pagante.", f"{taxa_ev_pag:.1f}%", "", "#F39200"),
-    (c5, "Taxa Evasão Bolsista.", f"{taxa_ev_bols:.1f}%", "", "#C2006B"),
-    (c6, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
+    (c4, "Evasão Bolsista", f"{int(total_ev_bols)}", "", "#E30613"),    
+    (c5, "Taxa Evasão Pagante.", f"{taxa_ev_pag:.1f}%", "", "#F39200"),
+    (c6, "Taxa Evasão Bolsista.", f"{taxa_ev_bols:.1f}%", "", "#C2006B"),
+    (c7, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
 ]
 
 for col, label, val, delta, color in metrics:
