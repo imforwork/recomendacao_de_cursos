@@ -208,13 +208,13 @@ def medidas(g):
 
     return pd.Series({
         "CONCORRENTES":             int(conc_val),
-        "MAT. PAG. (23|24|25|26)":  gerar_serie_temporal("PAGANTE", "Valor"),
-        "MAT. BOLS. (23|24|25|26)": gerar_serie_temporal("GRATUITO", "Valor"),
-        "MAT. CANC. (23|24|25|26)": gerar_serie_temporal("CANCELADA", "Valor"),
-        "EV. PAG. (23|24|25|26)":   gerar_serie_temporal("PAGANTE", "EVASAO_PAG"),
-        "EV. BOLS. (23|24|25|26)":  gerar_serie_temporal("GRATUITO", "EVASAO_BOLS"),
-        "VAGAS (23|24|25|26)":      gerar_serie_temporal(None, "VAGAS_ULTIM", False),
-        "TURMAS (23|24|25|26)":     gerar_serie_temporal(None, "TURMA", False)
+        "MAT. PAG.":  gerar_serie_temporal("PAGANTE", "Valor"),
+        "MAT. BOLS.": gerar_serie_temporal("GRATUITO", "Valor"),
+        "MAT. CANC.": gerar_serie_temporal("CANCELADA", "Valor"),
+        "EV. PAG.":   gerar_serie_temporal("PAGANTE", "EVASAO_PAG"),
+        "EV. BOLS.":  gerar_serie_temporal("GRATUITO", "EVASAO_BOLS"),
+        "VAGAS":      gerar_serie_temporal(None, "VAGAS_ULTIM", False),
+        "TURMAS":     gerar_serie_temporal(None, "TURMA", False)
     })
 
 # ─────────────────────────────────────────────
@@ -293,7 +293,8 @@ with st.sidebar:
         sorted(df.loc[df["REGIONAL"].isin(reg_sel), "UNIDADE"].dropna().unique()), 
         "Todas as Unidades"
     )
-
+    st.divider()
+    
     # Bloco 2: Operacional
     st.markdown("**📚 EDUCACIONAL**")
     tur_sel = multiselect_com_seletor(
@@ -312,7 +313,6 @@ with st.sidebar:
         sorted(df["CURSO"].dropna().unique()), 
         "Todas os Cursos"
     )
-
     st.divider()
 
 # ─────────────────────────────────────────────
@@ -488,10 +488,10 @@ c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
 
 metrics = [
     (c1, "Matrículas Pagante", f"{int(at_mp)}", fmt_delta(at_mp, ant_mp), "#004587"),
-    (c2, "Matrículas Bolsista", f"{int(at_mb)}", fmt_delta(at_mb, ant_mb), "#004587"),
-    (c3, "Evasão Pagante", f"{int(at_ep)}", fmt_delta(at_ep, ant_ep, invert=True), "#dc8d26"),
-    (c4, "Taxa Evasão Pag.", f"{at_tp:.1f}%", fmt_delta(at_tp, ant_tp, invert=True), "#dc8d26"),
-    (c5, "Evasão Bolsista", f"{int(at_eb)}", fmt_delta(at_eb, ant_eb, invert=True), "#69280D"),
+    (c2, "Evasão Pagante", f"{int(at_ep)}", fmt_delta(at_ep, ant_ep, invert=True), "#dc8d26"),
+    (c3, "Taxa Evasão Pag.", f"{at_tp:.1f}%", fmt_delta(at_tp, ant_tp, invert=True), "#69280D"),
+    (c4, "Matrículas Bolsista", f"{int(at_mb)}", fmt_delta(at_mb, ant_mb), "#004587"),
+    (c5, "Evasão Bolsista", f"{int(at_eb)}", fmt_delta(at_eb, ant_eb, invert=True), "#dc8d26"),
     (c6, "Taxa Evasão Bols.", f"{at_tb:.1f}%", fmt_delta(at_tb, ant_tb, invert=True), "#69280D"),
     (c7, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
 ]
