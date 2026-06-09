@@ -193,7 +193,7 @@ def medidas(g):
                         if atual > anterior:
                             strings_finais.append(f"🟢{atual}")
                         elif atual < anterior:
-                            strings_finais.append(f"🔴{atual}")
+                            strings_finais.append(f"🔻{atual}")
                         else:
                             strings_finais.append(str(atual))
                     else:
@@ -289,40 +289,7 @@ st.markdown('<div class="page-title">📊 RECOMENDAÇÃO DE CURSO</div>', unsafe
 st.markdown('<div class="page-sub">SENAI Bahia · Planejamento de Cursos Técnicos</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# KPI CARDS
-# ─────────────────────────────────────────────
-# total_mat_pag  = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
-# total_mat_bols = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
-# total_ev_pag   = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
-# total_ev_bols   = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","EVASAO_BOLS"].sum()
-# total_turmas   = dff_kpi["TURMA"].max()
-# total_cursos   = dff_kpi["CURSO"].nunique()
-# total_unidades = dff_kpi["UNIDADE"].nunique()
-# taxa_ev_pag = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
-# taxa_ev_bols = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
-
-# total_conc     = dff_kpi["CONCORRENTES"].max() if "CONCORRENTES" in dff_kpi.columns else 0
-
-# c1,c2,c3,c4,c5 = st.columns()
-# cards = [
-#     (c1, "Matrículas Pagantes", f"{int(total_mat_pag):,}".replace(",","."), "#2563eb"),
-#     (c2, "Taxa de Evasão (Pagantes)", f"{taxa_ev_pag:.1f}%", "#d97706"),
-#     (c3, "Matrículas Bolsistas", f"{int(total_mat_bols):,}".replace(",","."), "#7c3aed"),
-#     (c4, "Taxa de Evasão (Bolsistas)", f"{taxa_ev_pag:.1f}%", "#d97706"),
-#     (c5, "Evasão Pagante", f"{int(total_ev_pag):,}".replace(",","."), "#dc2626"),
-
-# ]
-
-# for col, label, val, accent in cards:
-#     with col:
-#         st.markdown(f"""
-#         <div class="kpi-card" style="--accent:{accent}">
-#             <div class="kpi-label">{label}</div>
-#             <div class="kpi-value">{val}</div>
-#         </div>""", unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-# CÁLCULO DE DELTAS (COMPARAÇÃO COM ANO ANTERIOR)
+#  KPI CARDS
 # ─────────────────────────────────────────────
 
 # Identificar o ano de referência (último selecionado) e o ano imediatamente anterior
