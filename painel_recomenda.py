@@ -249,7 +249,6 @@ with st.sidebar:
     
     modalidades = sorted(df["MODALIDADE"].dropna().unique())
     mod_sel = multiselect_com_todos("Modalidade", modalidades)
-    st.divider()
 
     cursos_ = sorted(df["CURSO"].dropna().unique())
     curso_sel = multiselect_com_todos("Curso", cursos_)
