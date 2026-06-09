@@ -380,7 +380,7 @@ delta_bols = format_delta(val_bols_atual, val_bols_prev)
 # EXIBIÇÃO DOS CARDS
 # ─────────────────────────────────────────────
 
-cst.markdown("""
+st.markdown("""
 <style>
     .kpi-container {
         display: flex;
