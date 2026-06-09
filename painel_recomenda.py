@@ -171,7 +171,7 @@ def medidas(g):
 
     # --- CÁLCULO DE CONCORRENTES (Fiel à sua solicitação) ---
     conc_val = 0
-    
+
     if "INSTITUIÇÃO" in g.columns and g["INSTITUIÇÃO"].notna().any():
         conc_val = g["INSTITUIÇÃO"].nunique()
         # nunique() faz o somatório de valores únicos (distinct count)
@@ -338,6 +338,7 @@ tabela_final = dff_tabela[mask_tabela].copy()
 # Agora chame o groupby e a função medidas usando tabela_final...
 tabela_exibicao = tabela_final.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
 
+st.write(f"Linhas com Concorrente: {dff_tabela['INSTITUIÇÃO'].notna().sum()}")
 # Exibição com itables (interactive_table)
 interactive_table(
     tabela_exibicao, # Resultado do apply(medidas)
