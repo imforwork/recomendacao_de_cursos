@@ -147,8 +147,7 @@ def medidas(g):
                 val = 0 if pd.isna(res) else res
             valores_num.append(int(round(float(val))))
         
-        if sum(valores_num) == 0:
-            return "-"
+        if sum(valores_num) == 0: return "-"
         
         strings_finais = []
         for i, atual in enumerate(valores_num):
@@ -159,10 +158,8 @@ def medidas(g):
                     anterior = valores_num[i-1]
                     if anterior > 0:
                         if atual > anterior:
-                            # 🟢▲ para subida (Futurístico)
                             strings_finais.append(f"🟢{atual}")
                         elif atual < anterior:
-                            # 🔴▼ para descida
                             strings_finais.append(f"🔴{atual}")
                         else:
                             strings_finais.append(str(atual))
@@ -170,17 +167,18 @@ def medidas(g):
                         strings_finais.append(str(atual))
                 else:
                     strings_finais.append(str(atual))
-        
         return " | ".join(strings_finais)
 
-    # Tratamento seguro para CONCORRENTES
-    conc_val = 0
-    if "CONCORRENTES" in g.columns:
-        res_conc = g["CONCORRENTES"].max()
-        conc_val = 0 if pd.isna(res_conc) else res_conc
+    # --- CÁLCULO DE CONCORRENTES (Fiel à sua solicitação) ---
+    if "INSTITUIÇÃO" in g.columns and g["INSTITUIÇÃO"].notna().any():
+        conc_val = g["INSTITUIÇÃO"].nunique()
+        # nunique() faz o somatório de valores únicos (distinct count)
+        conc_val = g["INSTITUIÇÃO"].nunique()
+    else:
+        conc_val = 0
 
     return pd.Series({
-        "CONCORRENTES":             int(round(float(conc_val))),        
+        "CONCORRENTES":             int(round(float(conc_val))), # Agora é o somatório de únicos
         "MAT. PAG. (23|24|25|26)":  gerar_serie_temporal("PAGANTE", "Valor"),
         "MAT. BOLS. (23|24|25|26)": gerar_serie_temporal("GRATUITO", "Valor"),
         "MAT. CANC. (23|24|25|26)": gerar_serie_temporal("CANCELADA", "Valor"),
@@ -342,14 +340,12 @@ tabela_exibicao = tabela_final.groupby(group_cols, dropna=False, as_index=False)
 
 # Exibição com itables (interactive_table)
 interactive_table(
-    tabela,
-    caption="Tabela de Recomendação - SENAI/BA",
-    buttons=["copyHtml5", "csvHtml5", "excelHtml5"],
-    paging=False,          # Remove a paginação (mostra tudo)
-    scrollY="600px",       # Altura da caixa de visualização
+    tabela_exibicao, # Resultado do apply(medidas)
+    paging=False, 
+    scrollY="600px", 
     scrollCollapse=True,
-    scrollX=True,          # Scroll horizontal para telas menores
-    columnDefs=[{"className": "dt-center", "targets": "_all"}], # Centraliza tudo
+    scrollX=True,
+    columnDefs=[{"className": "dt-center", "targets": "_all"}]
 )
 st.divider()
 # ─────────────────────────────────────────────
