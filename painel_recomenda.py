@@ -126,7 +126,7 @@ if "Oferta Senai" not in df.columns and "Oferta Senai" in obs.columns:
 
 # Concorrentes → CONCORRENTES
 conc_agg = conc.groupby(["COD_Concorrentes","INSTITUIÇÃO"],
-                        as_index=False).agg({'INSTITUIÇÃO':'nunique'}).reset_index().rename(columns={"INSTITUIÇÃO":"CONCORRENTES"}))
+                        as_index=False).agg({'INSTITUIÇÃO':'nunique'}).reset_index().rename(columns={"INSTITUIÇÃO":"CONCORRENTES"})
 df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
 
 # if "COD_Concorrentes" in conc.columns:
