@@ -291,31 +291,100 @@ st.markdown('<div class="page-sub">SENAI Bahia · Planejamento de Cursos Técnic
 # ─────────────────────────────────────────────
 # KPI CARDS
 # ─────────────────────────────────────────────
+# total_mat_pag  = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
+# total_mat_bols = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
+# total_ev_pag   = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
+# total_ev_bols   = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","EVASAO_BOLS"].sum()
+# total_turmas   = dff_kpi["TURMA"].max()
+# total_cursos   = dff_kpi["CURSO"].nunique()
+# total_unidades = dff_kpi["UNIDADE"].nunique()
+# taxa_ev_pag = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
+# taxa_ev_bols = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
+
+# total_conc     = dff_kpi["CONCORRENTES"].max() if "CONCORRENTES" in dff_kpi.columns else 0
+
+# c1,c2,c3,c4,c5 = st.columns()
+# cards = [
+#     (c1, "Matrículas Pagantes", f"{int(total_mat_pag):,}".replace(",","."), "#2563eb"),
+#     (c2, "Taxa de Evasão (Pagantes)", f"{taxa_ev_pag:.1f}%", "#d97706"),
+#     (c3, "Matrículas Bolsistas", f"{int(total_mat_bols):,}".replace(",","."), "#7c3aed"),
+#     (c4, "Taxa de Evasão (Bolsistas)", f"{taxa_ev_pag:.1f}%", "#d97706"),
+#     (c5, "Evasão Pagante", f"{int(total_ev_pag):,}".replace(",","."), "#dc2626"),
+
+# ]
+
+# for col, label, val, accent in cards:
+#     with col:
+#         st.markdown(f"""
+#         <div class="kpi-card" style="--accent:{accent}">
+#             <div class="kpi-label">{label}</div>
+#             <div class="kpi-value">{val}</div>
+#         </div>""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# CÁLCULO DE DELTAS (COMPARAÇÃO COM ANO ANTERIOR)
+# ─────────────────────────────────────────────
+
+# Identificar o ano de referência (último selecionado) e o ano imediatamente anterior
+ano_atual = max(ano_sel) if ano_sel else 2025
+ano_anterior = ano_atual - 1
+
+# Filtrar base para o ano anterior (mantendo os mesmos filtros de regional/unidade/semestre)
+mask_prev = mask_tabela & (df["ANO"] == ano_anterior)
+dff_prev = df[mask_prev]
+
+# Métricas Ano Atual (dff_kpi já é o ano atual filtrado)
 total_mat_pag  = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
 total_mat_bols = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
 total_ev_pag   = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE","EVASAO_PAG"].sum()
-total_conc     = dff_kpi["CONCORRENTES"].max() if "CONCORRENTES" in dff_kpi.columns else 0
-total_turmas   = dff_kpi["TURMA"].max()
-total_cursos   = dff_kpi["CURSO"].nunique()
-total_unidades = dff_kpi["UNIDADE"].nunique()
-taxa_ev = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
+total_ev_bols  = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO","EVASAO_BOLS"].sum()
+# Concorrentes: Usamos nunique na base filtrada por regional/unidade
+total_conc = dff_kpi["INSTITUIÇÃO"].nunique() if "INSTITUIÇÃO" in dff_kpi.columns else 0
 
-c1,c2,c3,c4,c5,c6 = st.columns(6)
+# Taxas Atuais (Corrigidas)
+taxa_ev_pag = (total_ev_pag / total_mat_pag * 100) if total_mat_pag > 0 else 0
+taxa_ev_bols = (total_ev_bols / total_mat_bols * 100) if total_mat_bols > 0 else 0
+
+# Métricas Ano Anterior (Para o Delta)
+prev_mat_pag = dff_prev.loc[dff_prev["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
+prev_mat_bols = dff_prev.loc[dff_prev["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
+
+# Cálculo das Variações (%)
+def calc_delta(atual, anterior):
+    if anterior > 0:
+        res = ((atual - anterior) / anterior) * 100
+        cor = "green" if res >= 0 else "red"
+        seta = "▲" if res >= 0 else "▼"
+        return f"<span style='color:{cor}; font-size: 0.8rem;'>{seta} {res:.1f}%</span>"
+    return "<span style='color:gray; font-size: 0.8rem;'>--</span>"
+
+delta_pag = calc_delta(total_mat_pag, prev_mat_pag)
+delta_bols = calc_delta(total_mat_bols, prev_mat_bols)
+
+# ─────────────────────────────────────────────
+# EXIBIÇÃO DOS CARDS
+# ─────────────────────────────────────────────
+
+c1, c2, c3, c4, c5, c6 = st.columns(6)
+
 cards = [
-    (c1, "Matrículas Pagantes", f"{int(total_mat_pag):,}".replace(",","."), "#2563eb"),
-    (c2, "Matrículas Bolsistas", f"{int(total_mat_bols):,}".replace(",","."), "#7c3aed"),
-    (c3, "Evasão Pagante", f"{int(total_ev_pag):,}".replace(",","."), "#dc2626"),
-    (c4, "Taxa de Evasão", f"{taxa_ev:.1f}%", "#d97706"),
-    (c5, "Cursos Ativos", str(total_cursos), "#059669"),
-    (c6, "Unidades", str(total_unidades), "#0891b2"),
+    (c1, "Matrículas Pagantes", f"{int(total_mat_pag):,}".replace(",","."), "#2563eb", delta_pag),
+    (c2, "Matrículas Bolsistas", f"{int(total_mat_bols):,}".replace(",","."), "#7c3aed", delta_bols),
+    (c3, "Concorrentes (Qtd)", str(total_conc), "#0891b2", ""),
+    (c4, "Evasão Pagante", f"{int(total_ev_pag):,}".replace(",","."), "#dc2626", ""),
+    (c5, "Taxa Evasão Pag.", f"{taxa_ev_pag:.1f}%", "#d97706", ""),
+    (c6, "Taxa Evasão Bols.", f"{taxa_ev_bols:.1f}%", "#e11d48", "")
 ]
-for col, label, val, accent in cards:
+
+for col, label, val, accent, delta in cards:
     with col:
         st.markdown(f"""
         <div class="kpi-card" style="--accent:{accent}">
             <div class="kpi-label">{label}</div>
             <div class="kpi-value">{val}</div>
+            <div class="kpi-delta">{delta}</div>
         </div>""", unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────
 # TABELA PRINCIPAL
