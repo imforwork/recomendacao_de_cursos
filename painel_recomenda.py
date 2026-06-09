@@ -129,6 +129,9 @@ conc_agg = (conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"]
                .nunique().reset_index()
                .rename(columns={"INSTITUIÇÃO":"CONCORRENTES"}))
 df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
+if "COD_Concorrentes" in conc.columns:
+    conc_para_join = conc[["COD_Concorrentes", "INSTITUIÇÃO"]].drop_duplicates()
+    df = df.merge(conc_para_join, on="COD_Concorrentes", how="left")
 
 def medidas(g):
     anos_ref = [2023, 2024, 2025, 2026]
@@ -172,13 +175,11 @@ def medidas(g):
     # --- CÁLCULO DE CONCORRENTES (Fiel à sua solicitação) ---
     conc_val = 0
 
-    if "INSTITUIÇÃO" in g.columns and g["INSTITUIÇÃO"].notna().any():
-        conc_val = g["INSTITUIÇÃO"].nunique()
-        # nunique() faz o somatório de valores únicos (distinct count)
+    if "INSTITUIÇÃO" in g.columns:
         conc_val = g["INSTITUIÇÃO"].nunique()
 
     return pd.Series({
-        "CONCORRENTES":             int(round(float(conc_val))), # Agora é o somatório de únicos
+        "CONCORRENTES":             int(conc_val), # Agora é o somatório de únicos
         "MAT. PAG. (23|24|25|26)":  gerar_serie_temporal("PAGANTE", "Valor"),
         "MAT. BOLS. (23|24|25|26)": gerar_serie_temporal("GRATUITO", "Valor"),
         "MAT. CANC. (23|24|25|26)": gerar_serie_temporal("CANCELADA", "Valor"),
