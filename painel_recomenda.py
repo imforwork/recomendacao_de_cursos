@@ -191,9 +191,9 @@ def medidas(g):
                     anterior = valores_num[i-1]
                     if anterior > 0:
                         if atual > anterior:
-                            strings_finais.append(f"{atual} 🡅 ")
+                            strings_finais.append(f" 🡅 {atual}")
                         elif atual < anterior:
-                            strings_finais.append(f"{atual} 🡇 ")
+                            strings_finais.append(f" 🡇 {atual}")
                         else:
                             strings_finais.append(str(atual))
                     else:
