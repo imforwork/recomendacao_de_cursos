@@ -116,8 +116,37 @@ vagas_m = vagas[["COD_VAGAS", "VAGAS_2"]].rename(columns={"VAGAS_2": "VAGAS_ULTI
 df = df.merge(vagas_m, on="COD_VAGAS", how="left")
 
 # 3. Observatório -> Já possui drop_duplicates (OK)
-obs_m = obs[["COD_Observatorio", "CLASSIFICAÇÃO", "Oferta Senai"]].drop_duplicates(subset=["COD_Observatorio"])
-df = df.merge(obs_m, on="COD_Observatorio", how="left")
+# 3. Observatório -> Tratamento Defensivo de Colunas e Chaves
+if not obs.empty:
+    # Identifica os nomes reais das colunas (com ou sem acento/underscore)
+    cols_obs = obs.columns.tolist()
+    
+    # 1. Recuperar ou Criar COD_Observatorio
+    if "COD_Observatorio" not in cols_obs:
+        # Se foi removida, recriamos usando UNIDADE_2 + CURSO (conforme lógica do PQ)
+        if "UNIDADE_2" in cols_obs and "CURSO" in cols_obs:
+            obs["COD_Observatorio"] = obs["UNIDADE_2"].astype(str) + obs["CURSO"].astype(str)
+        elif "UNIDADE_2" in cols_obs and "Catálogo - Curso Técnico" in cols_obs:
+            obs["COD_Observatorio"] = obs["UNIDADE_2"].astype(str) + obs["Catálogo - Curso Técnico"].astype(str)
+
+    # 2. Mapear Classificação e Oferta (variantes comuns)
+    col_class = next((c for c in ["CLASSIFICACAO", "CLASSIFICAÇÃO", "Classificação"] if c in cols_obs), None)
+    col_oferta = next((c for c in ["OFERTA_SENAI", "Oferta Senai", "OFERTA SENAI"] if c in cols_obs), None)
+
+    # 3. Preparar tabela para merge com nomes padronizados
+    cols_selecao = ["COD_Observatorio"]
+    renomear = {}
+    
+    if col_class: 
+        cols_selecao.append(col_class)
+        renomear[col_class] = "CLASSIFICAÇÃO"
+    if col_oferta: 
+        cols_selecao.append(col_oferta)
+        renomear[col_oferta] = "Oferta Senai"
+
+    # Executa o merge apenas com o que foi encontrado
+    obs_m = obs[cols_selecao].drop_duplicates(subset=["COD_Observatorio"]).rename(columns=renomear)
+    df = df.merge(obs_m, on="COD_Observatorio", how="left")
 
 # 4. Concorrentes -> CÁLCULO PRÉVIO PARA EVITAR EXPLOSÃO DE LINHAS
 # Agrupamos por chave e contamos as instituições únicas ANTES do merge
