@@ -316,41 +316,126 @@ taxa_ev_bols = (total_ev_bols / total_mat_bols * 100) if total_mat_bols > 0 else
 prev_mat_pag = dff_prev.loc[dff_prev["CONDIÇÃO"]=="PAGANTE","Valor"].sum()
 prev_mat_bols = dff_prev.loc[dff_prev["CONDIÇÃO"]=="GRATUITO","Valor"].sum()
 
-# Cálculo das Variações (%)
-def calc_delta(atual, anterior):
-    if anterior > 0:
-        res = ((atual - anterior) / anterior) * 100
-        cor = "green" if res >= 0 else "red"
-        seta = "▲" if res >= 0 else "▼"
-        return f"<span style='color:{cor}; font-size: 0.8rem;'>{seta} {res:.1f}%</span>"
-    return "<span style='color:gray; font-size: 0.8rem;'>--</span>"
+# # Cálculo das Variações (%)
+# def calc_delta(atual, anterior):
+#     if anterior > 0:
+#         res = ((atual - anterior) / anterior) * 100
+#         cor = "green" if res >= 0 else "red"
+#         seta = "▲" if res >= 0 else "▼"
+#         return f"<span style='color:{cor}; font-size: 0.8rem;'>{seta} {res:.1f}%</span>"
+#     return "<span style='color:gray; font-size: 0.8rem;'>--</span>"
 
-delta_pag = calc_delta(total_mat_pag, prev_mat_pag)
-delta_bols = calc_delta(total_mat_bols, prev_mat_bols)
+# delta_pag = calc_delta(total_mat_pag, prev_mat_pag)
+# delta_bols = calc_delta(total_mat_bols, prev_mat_bols)
+
+# ─────────────────────────────────────────────
+# LÓGICA DE MÉTRICAS E DELTAS (RETIFICADA)
+# ─────────────────────────────────────────────
+
+# 1. Definir o Ano Base para Comparação
+# Se "Todos" estiver selecionado, pegamos o maior ano disponível (ex: 2026)
+ultimo_ano_sel = max(ano_sel) if ano_sel else df["ANO"].max()
+ano_anterior = ultimo_ano_sel - 1
+
+# 2. Filtrar dados para o cálculo do Delta (Respeitando os outros filtros da sidebar)
+# Filtramos a base ORIGINAL (df) com os filtros operacionais, mas isolando os anos
+dff_ano_atual = df[(df["ANO"] == ultimo_ano_sel) & mask_tabela]
+dff_ano_prev  = df[(df["ANO"] == ano_anterior) & mask_tabela]
+
+def get_mat(dataframe, cond):
+    return dataframe.loc[dataframe["CONDIÇÃO"] == cond, "Valor"].sum()
+
+# Valores para os Cards (Baseados na seleção atual dff_kpi)
+mat_pag_total = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="PAGANTE", "Valor"].sum()
+mat_bols_total = dff_kpi.loc[dff_kpi["CONDIÇÃO"]=="GRATUITO", "Valor"].sum()
+
+# Valores para o Cálculo do Delta (Comparando Ano Atual vs Anterior)
+val_pag_atual = get_mat(dff_ano_atual, "PAGANTE")
+val_pag_prev  = get_mat(dff_ano_prev, "PAGANTE")
+val_bols_atual = get_mat(dff_ano_atual, "GRATUITO")
+val_bols_prev  = get_mat(dff_ano_prev, "GRATUITO")
+
+# 3. Cálculo de Concorrentes (Somatório de Instituições Únicas)
+# Garantimos que a contagem ignore duplicatas de anos/turnos no set filtrado
+if "INSTITUIÇÃO" in dff_kpi.columns:
+    total_conc = dff_kpi["INSTITUIÇÃO"].nunique()
+else:
+    # Fallback caso a coluna tenha sido renomeada no merge
+    total_conc = dff_kpi["QTD_CONCORRENTES"].max() if "QTD_CONCORRENTES" in dff_kpi.columns else 0
+
+# 4. Função de Formatação do Delta
+def format_delta(atual, anterior):
+    if anterior > 0:
+        variacao = ((atual - anterior) / anterior) * 100
+        cor = "#28a745" if variacao >= 0 else "#dc3545"
+        seta = "▲" if variacao >= 0 else "▼"
+        return f"<span style='color:{cor}; font-weight:600;'>{seta} {variacao:.1f}%</span> <span style='color:#777; font-size:0.7rem;'>vs ano ant.</span>"
+    return "<span style='color:#777;'>---</span>"
+
+delta_pag = format_delta(val_pag_atual, val_pag_prev)
+delta_bols = format_delta(val_bols_atual, val_bols_prev)
+
 
 # ─────────────────────────────────────────────
 # EXIBIÇÃO DOS CARDS
 # ─────────────────────────────────────────────
 
+cst.markdown("""
+<style>
+    .kpi-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .kpi-box {
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid #E0E0E0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        flex: 1;
+        min-width: 150px;
+        border-left: 5px solid #DDD;
+    }
+    .kpi-title {
+        color: #666;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .kpi-value {
+        color: #1A1A1A;
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 5px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Exibição
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 
-cards = [
-    (c1, "Matrículas Pagantes", f"{int(total_mat_pag):,}".replace(",","."), "#2563eb", delta_pag),
-    (c2, "Matrículas Bolsistas", f"{int(total_mat_bols):,}".replace(",","."), "#7c3aed", delta_bols),
-    (c3, "Concorrentes (Qtd)", str(total_conc), "#0891b2", ""),
-    (c4, "Evasão Pagante", f"{int(total_ev_pag):,}".replace(",","."), "#dc2626", ""),
-    (c5, "Taxa Evasão Pag.", f"{taxa_ev_pag:.1f}%", "#d97706", ""),
-    (c6, "Taxa Evasão Bols.", f"{taxa_ev_bols:.1f}%", "#e11d48", "")
+metrics = [
+    (c1, "Matrículas Pagantes", f"{int(mat_pag_total)}", delta_pag, "#004587"),
+    (c2, "Matrículas Bolsistas", f"{int(mat_bols_total)}", delta_bols, "#32145a"),
+    (c3, "Concorrentes", f"{int(total_conc)}", "", "#00A199"),
+    (c4, "Evasão Pagante", f"{int(total_ev_pag)}", "", "#E30613"),
+    (c5, "Taxa Evasão P.", f"{taxa_ev_pag:.1f}%", "", "#F39200"),
+    (c6, "Taxa Evasão B.", f"{taxa_ev_bols:.1f}%", "", "#C2006B")
 ]
 
-for col, label, val, accent, delta in cards:
+for col, label, val, delta, color in metrics:
     with col:
         st.markdown(f"""
-        <div class="kpi-card" style="--accent:{accent}">
-            <div class="kpi-label">{label}</div>
-            <div class="kpi-value">{val}</div>
-            <div class="kpi-delta">{delta}</div>
-        </div>""", unsafe_allow_html=True)
+            <div class="kpi-box" style="border-left-color: {color};">
+                <div class="kpi-title">{label}</div>
+                <div class="kpi-value">{val}</div>
+                <div class="kpi-delta">{delta}</div>
+            </div>
+        """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────
