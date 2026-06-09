@@ -440,7 +440,7 @@ metrics = [
     (c3, "Evasão Pagante", f"{int(at_ep)}", fmt_delta(at_ep, ant_ep, invert=True), "#dc2626"),
     (c4, "Evasão Bolsista", f"{int(at_eb)}", fmt_delta(at_eb, ant_eb, invert=True), "#dc2626"),
     (c5, "Taxa Evasão Pag.", f"{at_tp:.1f}%", fmt_delta(at_tp, ant_tp, invert=True), "#d97706"),
-    (c6, "Taxa Evasão Bols.", f"{at_tb:.1f}%", fmt_delta(at_tb, ant_tb, invert=True), "#C2006B")
+    (c6, "Taxa Evasão Bols.", f"{at_tb:.1f}%", fmt_delta(at_tb, ant_tb, invert=True), "#C2006B"),
     (c7, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
 ]
 
