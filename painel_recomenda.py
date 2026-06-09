@@ -243,12 +243,16 @@ with st.sidebar:
     st.divider()
 
     # Bloco 2: Operacional
-    st.markdown("**⚙️ OPERACIONAL**")
+    st.markdown("**📚 EDUCACIONAL**")
     turnos = sorted(df["TURNO"].dropna().unique())
     tur_sel = multiselect_com_todos("Turno", turnos)
     
     modalidades = sorted(df["MODALIDADE"].dropna().unique())
     mod_sel = multiselect_com_todos("Modalidade", modalidades)
+    st.divider()
+
+    cursos_ = sorted(df["CURSO"].dropna().unique())
+    curso_sel = multiselect_com_todos("Curso", cursos_)
     st.divider()
 
     # Bloco 3: Geográfico
@@ -268,7 +272,8 @@ mask_tabela = (
     df["SEMESTRE"].isin(sem_sel) &
     df["UNIDADE"].isin(uni_sel) &
     df["MODALIDADE"].isin(mod_sel) &
-    df["TURNO"].isin(tur_sel)
+    df["TURNO"].isin(tur_sel) &
+    df["CURSO"].isin(curso_sel)
 )
 
 # Filtro que INCLUI o ANO (para os KPIs/Cards)
