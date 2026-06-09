@@ -351,17 +351,45 @@ else:
     # Fallback caso a coluna tenha sido renomeada no merge
     total_conc = dff_kpi["QTD_CONCORRENTES"].max() if "QTD_CONCORRENTES" in dff_kpi.columns else 0
 
-# 4. Função de Formatação do Delta
-def format_delta(atual, anterior):
-    if anterior > 0:
-        variacao = ((atual - anterior) / anterior) * 100
-        cor = "#28a745" if variacao >= 0 else "#dc3545"
-        seta = "▲" if variacao >= 0 else "▼"
-        return f"<span style='color:{cor}; font-weight:600;'>{seta} {variacao:.1f}%</span> <span style='color:#777; font-size:0.7rem;'>vs ano ant.</span>"
-    return "<span style='color:#777;'>---</span>"
+# Definir anos para comparação
+ultimo_ano = max(ano_sel) if ano_sel else df["ANO"].max()
+ano_ant = ultimo_ano - 1
 
-delta_pag = format_delta(val_pag_atual, val_pag_prev)
-delta_bols = format_delta(val_bols_atual, val_bols_prev)
+# Dataframes auxiliares (Respeitando filtros operacionais da sidebar)
+dff_at = df[(df["ANO"] == ultimo_ano) & mask_tabela]
+dff_ant = df[(df["ANO"] == ano_ant) & mask_tabela]
+
+def get_metrics(dataframe):
+    m_pag = dataframe.loc[dataframe["CONDIÇÃO"] == "PAGANTE", "Valor"].sum()
+    m_bols = dataframe.loc[dataframe["CONDIÇÃO"] == "GRATUITO", "Valor"].sum()
+    e_pag = dataframe.loc[dataframe["CONDIÇÃO"] == "PAGANTE", "EVASAO_PAG"].sum()
+    e_bols = dataframe.loc[dataframe["CONDIÇÃO"] == "GRATUITO", "EVASAO_BOLS"].sum()
+    
+    t_pag = (e_pag / m_pag * 100) if m_pag > 0 else 0
+    t_bols = (e_bols / m_bols * 100) if m_bols > 0 else 0
+    
+    return m_pag, m_bols, e_pag, e_bols, t_pag, t_bols
+
+# Calcular valores Atuais e Anteriores
+at_mp, at_mb, at_ep, at_eb, at_tp, at_tb = get_metrics(dff_at)
+ant_mp, ant_mb, ant_ep, ant_eb, ant_tp, ant_tb = get_metrics(dff_ant)
+
+# Função de Delta com Lógica Invertida para Evasão
+def fmt_delta(at, ant, invert=False):
+    if ant > 0:
+        var = ((at - ant) / ant) * 100
+        # Se invert=True (Evasão), subir é ruim (vermelho)
+        if invert:
+            cor = "#dc3545" if var > 0 else "#28a745"
+        else:
+            cor = "#28a745" if var >= 0 else "#dc3545"
+            
+        seta = "▲" if var >= 0 else "▼"
+        return f"<span style='color:{cor}; font-weight:bold;'>{seta} {var:.1f}%</span> <span style='color:gray;'>vs ano ant.</span>"
+    return "<span style='color:gray;'>---</span>"
+
+delta_pag = fmt_delta(val_pag_atual, val_pag_prev)
+delta_bols = fmt_delta(val_bols_atual, val_bols_prev)
 
 
 # ─────────────────────────────────────────────
@@ -407,12 +435,12 @@ st.markdown("""
 c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
 
 metrics = [
-    (c1, "Matrículas Pagante", f"{int(mat_pag_total)}", delta_pag, "#004587"),
-    (c2, "Matrículas Bolsista", f"{int(mat_bols_total)}", delta_bols, "#32145a"),
-    (c3, "Evasão Pagante", f"{int(total_ev_pag)}", "", "#E30613"),
-    (c4, "Evasão Bolsista", f"{int(total_ev_bols)}", "", "#E30613"),    
-    (c5, "Taxa Evasão Pagante.", f"{taxa_ev_pag:.1f}%", "", "#F39200"),
-    (c6, "Taxa Evasão Bolsista.", f"{taxa_ev_bols:.1f}%", "", "#C2006B"),
+    (c1, "Matrículas Pagante", f"{int(at_mp)}", fmt_delta(at_mp, ant_mp), "#004587"),
+    (c2, "Matrículas Bolsista", f"{int(at_mb)}", fmt_delta(at_mb, ant_mb), "#32145a"),
+    (c3, "Evasão Pagante", f"{int(at_ep)}", fmt_delta(at_ep, ant_ep, invert=True), "#dc2626"),
+    (c4, "Evasão Bolsista", f"{int(at_eb)}", fmt_delta(at_eb, ant_eb, invert=True), "#dc2626"),
+    (c5, "Taxa Evasão Pag.", f"{at_tp:.1f}%", fmt_delta(at_tp, ant_tp, invert=True), "#d97706"),
+    (c6, "Taxa Evasão Bols.", f"{at_tb:.1f}%", fmt_delta(at_tb, ant_tb, invert=True), "#C2006B")
     (c7, "Concorrentes", f"{int(total_conc)}", "", "#00A199")
 ]
 
@@ -425,6 +453,7 @@ for col, label, val, delta, color in metrics:
                 <div class="kpi-delta">{delta}</div>
             </div>
         """, unsafe_allow_html=True)
+
 
 
 # ─────────────────────────────────────────────
