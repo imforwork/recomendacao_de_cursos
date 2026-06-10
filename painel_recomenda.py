@@ -96,9 +96,9 @@ def load_data():
     with open("dCLASSIFICACAO.pkl","rb") as f: classif = pickle.load(f)
     with open("dOFERTA_SENAI.pkl","rb") as f: oferta = pickle.load(f)
     # with open("Observatorio_2.pkl","rb") as f: obs = pickle.load(f)
-    return bd, conc, ev, vagas, classif, oferta, obs
+    return bd, conc, ev, vagas, classif, oferta
 
-bd, conc, ev, vagas, classif, oferta, obs = load_data()
+bd, conc, ev, vagas, classif, oferta = load_data()
 
 # ─────────────────────────────────────────────
 # JOINS
