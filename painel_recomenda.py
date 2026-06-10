@@ -764,9 +764,9 @@ def build_sidebar(df):
             if "Selecionar Todos" in sel or not sel: return list(options)
             return sel
         st.markdown("**📅 TEMPORAL**")
-        c1, c2 = st.columns(2)
-        with c1: ano_sel = multiselect_all("ANO", sorted(df["ANO"].unique()), "f_ano")
-        with c2: sem_sel = multiselect_all("SEM.", sorted(df["SEMESTRE"].unique()), "f_sem")
+        # c1, c2 = st.columns(2)
+        ano_sel = multiselect_all("ANO", sorted(df["ANO"].unique()), "f_ano")
+        sem_sel = multiselect_all("SEMESTRE", sorted(df["SEMESTRE"].unique()), "f_sem")
         st.divider()
         st.markdown("**🌎 GEOGRÁFICO**")
         reg_sel = multiselect_all("REGIONAL", sorted(df["REGIONAL"].unique()), "f_reg")
@@ -868,11 +868,11 @@ with ck7:
 
 # --- FILTROS DE TOPO E TABELA (MANTIDOS) ---
 st.divider()
-st.markdown('<div class="section-title">🔍 Refinar Detalhamento (Observatório/PA)</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">🔍 Detalhamento </div>', unsafe_allow_html=True)
 ct1, ct2 = st.columns([0.5, 1])
 with ct1:
     c_opts = sorted(df["CLASSIFICACAO"].dropna().unique()) if "CLASSIFICACAO" in df.columns else []
-    c_sel = st.multiselect("🏷️ Preditiva: Classificação", c_opts, placeholder="Todas as Classificações")
+    c_sel = st.multiselect("🏷️ Preditiva (Observatório/PA): Classificação", c_opts, placeholder="Todas as Classificações")
 with ct2:
     o_val = st.pills("🚀 Oferta SENAI Atual", options=["Sim", "Não"], selection_mode="single")
 
