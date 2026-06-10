@@ -104,7 +104,7 @@ bd, conc, ev, vagas, classif, oferta = load_data()
 # JOINS
 # ─────────────────────────────────────────────
 
-# 1. Evasão -> Já está agrupado por chave única (OK)
+# 1. Evasão -> Já está agrupado por chave única (OK) obs
 ev_agg = (ev.groupby("COD_Base_de_Evasao")
             .agg(EVASAO_PAG=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="PAGANTE"].sum()),
                  EVASAO_BOLS=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="GRATUITO"].sum()))
@@ -153,9 +153,9 @@ if not bd.empty:
     if "COD_Observatorio" not in cols_bd:
         # Se foi removida, recriamos usando UNIDADE_2 + CURSO (conforme lógica do PQ)
         if "UNIDADE_2" in cols_bd and "CURSO" in cols_bd:
-            obs["COD_Observatorio"] = obs["UNIDADE_2"].astype(str) + obs["CURSO"].astype(str)
+            bd["COD_Observatorio"] = bd["UNIDADE_2"].astype(str) + bd["CURSO"].astype(str)
         elif "UNIDADE_2" in cols_bd and "Catálogo - Curso Técnico" in cols_bd:
-            obs["COD_Observatorio"] = obs["UNIDADE_2"].astype(str) + obs["Catálogo - Curso Técnico"].astype(str)
+            bd["COD_Observatorio"] = bd["UNIDADE_2"].astype(str) + bd["Catálogo - Curso Técnico"].astype(str)
 
     # 2. Mapear Classificação e Oferta (variantes comuns)
     col_class = next((c for c in ["CLASSIFICACAO", "CLASSIFICAÇÃO", "Classificação"] if c in cols_bd), None)
