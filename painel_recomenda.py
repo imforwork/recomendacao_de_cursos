@@ -112,10 +112,38 @@ ev_agg = (ev.groupby("COD_Base_de_Evasao")
 df = bd.merge(ev_agg, on="COD_Base_de_Evasao", how="left")
 
 # 2. Vagas -> Garantir que COD_VAGAS seja único para não duplicar Valor
-vagas_m = vagas[["COD_VAGAS", "VAGAS_2"]].rename(columns={"VAGAS_2": "VAGAS_ULTIM"}).drop_duplicates(subset=["COD_VAGAS"])
-df = df.merge(vagas_m, on="COD_VAGAS", how="left")
 
-# 3. Observatório -> Já possui drop_duplicates (OK)
+# vagas_m = vagas[["COD_VAGAS", "VAGAS_2"]].rename(columns={"VAGAS_2": "VAGAS_ULTIM"}).drop_duplicates(subset=["COD_VAGAS"])
+# df = df.merge(vagas_m, on="COD_VAGAS", how="left")
+
+# ─────────────────────────────────────────────
+# CORREÇÃO DO JOIN DE VAGAS
+# ─────────────────────────────────────────────
+if not vagas.empty:
+    # 1. Limpeza rigorosa da tabela de vagas
+    vagas_m = vagas.copy()
+    
+    # Garantir que as colunas de composição da chave não tenham espaços
+    for c in ["COD_VAGAS", "VAGAS_2"]:
+        if c in vagas_m.columns:
+            vagas_m[c] = vagas_m[c].astype(str).str.strip()
+    
+    # Renomear para o padrão usado na função medidas
+    vagas_m = vagas_m.rename(columns={"VAGAS_2": "VAGAS_ULTIM"})
+    
+    # Manter apenas a última definição de vaga por chave (evitar duplicação)
+    vagas_m = vagas_m.drop_duplicates(subset=["COD_VAGAS"])
+    
+    # 2. Limpeza da chave na tabela principal antes do merge
+    df["COD_VAGAS"] = df["COD_VAGAS"].astype(str).str.strip()
+    
+    # 3. Executar o Merge
+    df = df.merge(vagas_m[["COD_VAGAS", "VAGAS_ULTIM"]], on="COD_VAGAS", how="left")
+    
+    # 4. Preencher NaNs com 0 para a função medidas não falhar
+    df["VAGAS_ULTIM"] = pd.to_numeric(df["VAGAS_ULTIM"], errors='coerce').fillna(0)
+
+
 # 3. Observatório -> Tratamento Defensivo de Colunas e Chaves
 if not obs.empty:
     # Identifica os nomes reais das colunas (com ou sem acento/underscore)
@@ -206,7 +234,7 @@ def medidas(g):
     # Pegamos o valor máximo da coluna de contagem de concorrentes do grupo
     conc_val = g["QTD_CONCORRENTES"].max() if "QTD_CONCORRENTES" in g.columns else 0
     conc_val = 0 if pd.isna(conc_val) else conc_val
-
+   
     return pd.Series({
         "CONCORRENTES":             int(conc_val),
         "MAT. PAG.":  gerar_serie_temporal("PAGANTE", "Valor"),
