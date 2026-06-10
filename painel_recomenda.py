@@ -162,7 +162,7 @@ if not bd.empty:
     col_oferta = next((c for c in ["OFERTA_SENAI", "Oferta Senai", "OFERTA SENAI"] if c in cols_bd), None)
 
     # # 3. Preparar tabela para merge com nomes padronizados
-    cols_selecao = ["COD_Observatorio"]
+    cols_selecao = ["COD_Observatorio"] # obs
     renomear = {}
     
     if col_class: 
@@ -173,23 +173,23 @@ if not bd.empty:
         renomear[col_oferta] = "Oferta Senai"
 
 # 3. Observatório -> Padronização Forçada
-if not obs.empty:
-    cols_bd = obs.columns.tolist()
+if not bd.empty:
+    cols_bd = bd.columns.tolist()
     
     # Busca variações de nome para Classificação e Oferta
     col_class_orig = next((c for c in ["CLASSIFICAÇÃO", "CLASSIFICACAO", "Classificação"] if c in cols_bd), None)
     col_oferta_orig = next((c for c in ["Oferta Senai", "OFERTA_SENAI", "OFERTA SENAI"] if c in cols_bd), None)
 
     if col_class_orig:
-        obs_m = obs[["COD_Observatorio", col_class_orig]].drop_duplicates(subset=["COD_Observatorio"])
+        obs_m = bd[["COD_Observatorio", col_class_orig]].drop_duplicates(subset=["COD_Observatorio"])
         df = df.merge(obs_m, on="COD_Observatorio", how="left").rename(columns={col_class_orig: "CLASSIFICACAO"})
 
     if col_oferta_orig:
-        obs_o = obs[["COD_Observatorio", col_oferta_orig]].drop_duplicates(subset=["COD_Observatorio"])
+        obs_o = bd[["COD_Observatorio", col_oferta_orig]].drop_duplicates(subset=["COD_Observatorio"])
         df = df.merge(obs_o, on="COD_Observatorio", how="left").rename(columns={col_oferta_orig: "OFERTA_SENAI"})
 
     # Executa o merge apenas com o que foi encontrado
-    obs_m = obs[cols_selecao].drop_duplicates(subset=["COD_Observatorio"]).rename(columns=renomear)
+    obs_m = bd[cols_selecao].drop_duplicates(subset=["COD_Observatorio"]).rename(columns=renomear)
     df = df.merge(obs_m, on="COD_Observatorio", how="left")
 
 # 4. Concorrentes -> CÁLCULO PRÉVIO PARA EVITAR EXPLOSÃO DE LINHAS
