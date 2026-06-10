@@ -674,17 +674,16 @@ def load_raw_data():
         "bd": "BD_Plan_Curso_Tecnico.pkl",
         "conc": "Base_Concorrentes.pkl",
         "ev": "Base_de_Evasao.pkl",
-        "vagas": "dVagas.pkl"#,
-        # "obs": "Observatorio_2.pkl"
-    }
+        "vagas": "dVagas.pkl"}
+    
     data = {}
     for key, path in files.items():
         with open(path, "rb") as f:
             data[key] = pickle.load(f)
-    return data["bd"], data["conc"], data["ev"], data["vagas"]#, data["obs"]
+    return data["bd"], data["conc"], data["ev"], data["vagas"]
 
 # ─────────────────────────────────────────────
-# 3. PROCESSAMENTO E JOINS (ETL)
+# 3. PROCESSAMENTO E JOINS
 # ─────────────────────────────────────────────
 def process_data(bd, conc, ev, vagas):
     # --- A. Evasão ---
@@ -747,8 +746,8 @@ def medidas_temporais(g):
         for i, atual in enumerate(valores_num):
             if atual == 0: res_str.append("-")
             elif i > 0 and valores_num[i-1] > 0:
-                if atual > valores_num[i-1]: res_str.append(f"🟢{atual}")
-                elif atual < valores_num[i-1]: res_str.append(f"🔴{atual}")
+                if atual > valores_num[i-1]: res_str.append(f"🡅 {atual}")
+                elif atual < valores_num[i-1]: res_str.append(f"🡇 {atual}")
                 else: res_str.append(str(atual))
             else: res_str.append(str(atual))
         return " | ".join(res_str)
