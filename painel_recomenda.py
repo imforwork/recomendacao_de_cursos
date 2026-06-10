@@ -562,7 +562,7 @@ st.markdown("##### 🔍Observatório/PA")
 c_topo1, c_topo2 = st.columns([0.5, 1])
 
 with c_topo1:
-    class_opts = sorted(df["CLASSIFICACAO"].dropna().unique())
+    class_opts = sorted(df["CLASSIFICAÇÃO"].dropna().unique())
     class_sel = st.multiselect("🏷️  Preditiva: Classificação", class_opts, placeholder="Todas as Classificações")
     if not class_sel: class_sel = list(class_opts)
 
@@ -577,7 +577,7 @@ with c_topo2:
     of_sel = [of_val] if of_val else list(of_opts)
 
 # Aplicação dos filtros finais antes do groupby
-mask_tabela &= dff_tabela["CLASSIFICACAO"].isin(class_sel)
+mask_tabela &= dff_tabela["CLASSIFICAÇÃO"].isin(class_sel)
 mask_tabela &= dff_tabela["OFERTA_SENAI"].isin(of_sel)
 
 # Dataframe que será usado na função medidas
