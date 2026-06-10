@@ -674,7 +674,7 @@ def load_raw_data():
         "bd": "BD_Plan_Curso_Tecnico.pkl",
         "conc": "Base_Concorrentes.pkl",
         "ev": "Base_de_Evasao.pkl",
-        "vagas": "dVagas.pkl",
+        "vagas": "dVagas.pkl"#,
         # "obs": "Observatorio_2.pkl"
     }
     data = {}
@@ -686,7 +686,7 @@ def load_raw_data():
 # ─────────────────────────────────────────────
 # 3. PROCESSAMENTO E JOINS (ETL)
 # ─────────────────────────────────────────────
-def process_data(bd, conc, ev, vagas, obs):
+def process_data(bd, conc, ev, vagas):
     # --- A. Evasão ---
     ev_agg = (ev.groupby("COD_Base_de_Evasao")
                 .agg(EVASAO_PAG=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="PAGANTE"].sum()),
@@ -700,12 +700,12 @@ def process_data(bd, conc, ev, vagas, obs):
         df = df.merge(vagas_m[["COD_VAGAS", "VAGAS_ULTIM"]], on="COD_VAGAS", how="left")
     
     # --- C. Observatório (Classificação e Oferta) ---
-    if not obs.empty:
+    if not bd.empty:
         # Padronização de nomes de colunas do Observatório
-        obs_clean = obs.copy()
+        obs_clean = bd.copy()
         col_map = {
-            next((c for c in ["CLASSIFICACAO", "CLASSIFICAÇÃO", "Classificação"] if c in obs.columns), "CLASSIFICACAO"): "CLASSIFICACAO",
-            next((c for c in ["OFERTA_SENAI", "Oferta Senai", "OFERTA SENAI"] if c in obs.columns), "OFERTA_SENAI"): "OFERTA_SENAI"
+            next((c for c in ["CLASSIFICACAO", "CLASSIFICAÇÃO", "Classificação"] if c in bd.columns), "CLASSIFICACAO"): "CLASSIFICACAO",
+            next((c for c in ["OFERTA_SENAI", "Oferta Senai", "OFERTA SENAI"] if c in bd.columns), "OFERTA_SENAI"): "OFERTA_SENAI"
         }
         obs_clean = obs_clean.rename(columns=col_map)
         obs_reduced = obs_clean[["COD_Observatorio", "CLASSIFICACAO", "OFERTA_SENAI"]].drop_duplicates(subset=["COD_Observatorio"])
