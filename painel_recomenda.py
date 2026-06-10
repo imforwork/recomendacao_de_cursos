@@ -557,7 +557,7 @@ if "OFERTA_SENAI" in dff_tabela.columns: group_cols.append("OFERTA_SENAI")
 
 # Gerar a tabela aplicando a nova função de medidas
 dff_tabela = dff_tabela.groupby(group_cols, dropna=False, as_index=False).apply(medidas).reset_index()
-dff_tabela.rename(columns={"CLASSIFICACAO":"CLASSIFICAÇÃO", 
+dff_tabela.rename(columns={"CLASSIFICAÇÃO":"CLASSIFICAÇÃO", 
                     "Esforço de Venda":"ESFORÇO DE VENDA", 
                     "Turmas Potenciais":"TURMAS POTENCIAIS", 
                     "OFERTA_SENAI":"OFERTA SENAI"}, inplace=True)
