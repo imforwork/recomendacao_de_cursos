@@ -578,7 +578,7 @@ st.markdown("##### 🔍Observatório/PA")
 c_topo1, c_topo2 = st.columns([0.5, 1])
 
 with c_topo1:
-    class_opts = sorted(df["CLASSIFICACAO"].dropna().unique())
+    class_opts = sorted(dff_tabela["CLASSIFICACAO"].dropna().unique())
     class_sel = st.multiselect("🏷️  Preditiva: Classificação", class_opts, placeholder="Todas as Classificações")
     if not class_sel: class_sel = list(class_opts)
 
