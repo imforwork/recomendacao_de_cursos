@@ -92,85 +92,48 @@ def process_data(bd, conc, ev, vagas):
 # ─────────────────────────────────────────────
 # NOVO: FUNÇÃO DE CÁLCULO DE TENDÊNCIA (LÓGICA EXCEL)
 # ─────────────────────────────────────────────
-def calcular_tendencia_linear(valores_num):
-    """
-    Simula a lógica PROJ.LIN do Excel:
-    Tenta 4 pontos (2023-2026), se falhar tenta os últimos 3.
-    Retorna a classificação baseada no coeficiente angular (slope).
-    """
-    # X para 4 anos e 3 anos
-    x4 = np.array([1, 2, 3, 4])
-    x3 = np.array([2, 3, 4])
-    y = np.array(valores_num, dtype=float)
+def colorir_tendencia(val, tipo="crescimento"):
+    if val == "S/ Param.": return val
+    cor_vde, cor_vrm = "#28a745", "#dc3545"
+    if tipo == "crescimento":
+        cor = cor_vde if "Alta" in val else (cor_vrm if "Baixa" in val else "inherit")
+    else: # evasao (lógica invertida)
+        cor = cor_vrm if "Alta" in val else (cor_vde if "Baixa" in val else "inherit")
+    return f'<div style="color:{cor}; font-weight:bold;">{val}</div>'
 
-    def fit_slope(xi, yi):
-        # Filtra para garantir que temos dados significativos (evita erro de projeção com zeros)
-        valid_mask = yi > 0
-        if sum(valid_mask) < 2: return None
-        try:
-            slope, _ = np.polyfit(xi, yi, 1)
-            return slope
-        except: return None
-
-    # Tenta 4 anos
-    slope = fit_slope(x4, y)
-    
-    # Se erro/sem dados, tenta os últimos 3 anos
-    if slope is None:
-        slope = fit_slope(x3, y[1:])
-
-    if slope is None: return "S/ Param."
-
-    # Classificação conforme fórmula da imagem
-    if slope > 1: return "Alta"
-    if slope > 0: return "Leve Alta"
-    if slope < -1: return "Baixa"
-    return "Leve Baixa"
-
-# ─────────────────────────────────────────────
-# 4. MOTOR DE CÁLCULO (MEDIDAS TEMPORAIS ATUALIZADO)
-# ─────────────────────────────────────────────
 def medidas_temporais(g):
     anos_ref = [2023, 2024, 2025, 2026]
-    
-    def obter_valores_brutos(condicao, coluna, is_sum=True):
-        valores = []
+    def obter_v(cond, col):
+        vals = []
         for ano in anos_ref:
             mask = (g["ANO"] == ano)
-            if condicao: mask &= (g["CONDIÇÃO"] == condicao)
-            sub = g.loc[mask, coluna]
-            res = (sub.sum() if is_sum else sub.max()) if not sub.empty else 0
-            valores.append(0 if pd.isna(res) else int(round(float(res))))
-        return valores
-
-    def formatar_string_temporal(valores_num):
-        if sum(valores_num) == 0: return "-"
-        res_str = []
-        for i, atual in enumerate(valores_num):
-            if atual == 0: res_str.append("-")
-            elif i > 0 and valores_num[i-1] > 0:
-                if atual > valores_num[i-1]: res_str.append(f"🡅 {atual}")
-                elif atual < valores_num[i-1]: res_str.append(f"🡇 {atual}")
-                else: res_str.append(str(atual))
-            else: res_str.append(str(atual))
-        return " | ".join(res_str)
-
-    # Coleta de dados brutos para Tendências
-    v_mat_pag = obter_valores_brutos("PAGANTE", "Valor")
-    v_mat_bols = obter_valores_brutos("GRATUITO", "Valor")
-    v_ev_pag = obter_valores_brutos("PAGANTE", "EVASAO_PAG")
-    v_ev_bols = obter_valores_brutos("GRATUITO", "EVASAO_BOLS")
-
+            if cond: mask &= (g["CONDIÇÃO"] == cond)
+            sub = g.loc[mask, col]
+            vals.append(int(round(float(sub.sum()))) if not sub.empty else 0)
+        return vals
+    def fmt_s(v):
+        if sum(v) == 0: return "-"
+        res = []
+        for i, atual in enumerate(v):
+            if atual == 0: res.append("-")
+            elif i > 0 and v[i-1] > 0:
+                seta = "🡅" if atual > v[i-1] else ("🡇" if atual < v[i-1] else "")
+                res.append(f"{seta} {atual}".strip())
+            else: res.append(str(atual))
+        return " | ".join(res)
+    
+    vp, vb, ep, eb = obter_v("PAGANTE","Valor"), obter_v("GRATUITO","Valor"), obter_v("PAGANTE","EVASAO_PAG"), obter_v("GRATUITO","EVASAO_BOLS")
+    
     return pd.Series({
-        "MAT. PAG. (23-26)":  formatar_string_temporal(v_mat_pag),
-        "MAT. BOLS. (23-26)": formatar_string_temporal(v_mat_bols),
-        "EV. PAG. (23-26)":   formatar_string_temporal(v_ev_pag),
-        "EV. BOLS. (23-26)":  formatar_string_temporal(v_ev_bols),
-        "TEND. MAT. PAG.":    calcular_tendencia_linear(v_mat_pag),
-        "TEND. MAT. BOLS.":   calcular_tendencia_linear(v_mat_bols),
-        "TEND. EV. PAG.":     calcular_tendencia_linear(v_ev_pag),
-        "TEND. EV. BOLS.":    calcular_tendencia_linear(v_ev_bols),
-        "CONCORRENTES":       int(g["QTD_CONCORRENTES"].max()) if "QTD_CONCORRENTES" in g.columns else 0
+        "MAT. PAG. (23-26)": fmt_s(vp), 
+        "MAT. BOLS. (23-26)": fmt_s(vb),
+        "EV. PAG. (23-26)": fmt_s(ep), 
+        "EV. BOLS. (23-26)": fmt_s(eb),
+        "TEND. MAT. PAG.": colorir_tendencia(calcular_tendencia_linear(vp), "crescimento"),
+        "TEND. MAT. BOLS.": colorir_tendencia(calcular_tendencia_linear(vb), "crescimento"),
+        "TEND. EV. PAG.": colorir_tendencia(calcular_tendencia_linear(ep), "evasao"),
+        "TEND. EV. BOLS.": colorir_tendencia(calcular_tendencia_linear(eb), "evasao"),
+        "CONCORRENTES": int(g["QTD_CONCORRENTES"].max()) if "QTD_CONCORRENTES" in g.columns else 0
     })
 
 # ─────────────────────────────────────────────
@@ -315,22 +278,22 @@ if o_val: dff_tabela = dff_tabela[dff_tabela["OFERTA_SENAI"] == o_val]
 # ─────────────────────────────────────────────
 if not dff_tabela.empty:
     g_cols = ["CURSO", "MODALIDADE", "TURNO"]
-    for c in ["CLASSIFICACAO", "OFERTA_SENAI"]:
+    for c in ["CLASSIFICAÇÃO", "OFERTA SENAI"]:
         if c in dff_tabela.columns: g_cols.append(c)
     
     tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
     if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
 
-    col_principal, col_tendencia = st.columns([0.65, 0.35])
+    col_principal, col_tendencia = st.columns([0.55, 0.35])
 
     with col_principal:
-        st.markdown("**Séries Temporais (2023-2026)**")
+        st.markdown("**DETALHAMENTO (2023-2026)**")
         cols_p = g_cols + ["MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
         interactive_table(tabela_resumo[cols_p], paging=False, scrollY="500px", scrollX=True)
 
     with col_tendencia:
-        st.markdown("**Tendências Projetadas**")
-        cols_t = ["CURSO", "TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
+        st.markdown("**Tendências (2023 - 2025)**")
+        cols_t = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
         interactive_table(tabela_resumo[cols_t], paging=False, scrollY="500px", scrollX=True)
 else:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
