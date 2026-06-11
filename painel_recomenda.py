@@ -70,36 +70,76 @@ def process_data(bd, conc, ev, vagas):
         df = df.merge(vagas_m[["COD_VAGAS", "VAGAS_ULTIM"]], on="COD_VAGAS", how="left")
     
     if not bd.empty:
-        obs_clean = bd.copy()
+        # Padronizamos os nomes das colunas de interesse diretamente no DataFrame principal
         col_map = {
-            next((c for c in ["CLASSIFICACAO", "CLASSIFICAÇÃO", "Classificação"] if c in bd.columns), "CLASSIFICACAO"): "CLASSIFICACAO",
-            next((c for c in ["OFERTA_SENAI", "Oferta Senai", "OFERTA SENAI"] if c in bd.columns), "OFERTA_SENAI"): "OFERTA_SENAI"
+            "CLASSIFICACAO": "CLASSIFICACAO", "CLASSIFICAÇÃO": "CLASSIFICACAO", "Classificação": "CLASSIFICACAO",
+            "OFERTA_SENAI": "OFERTA_SENAI", "Oferta Senai": "OFERTA_SENAI", "OFERTA SENAI": "OFERTA_SENAI",
+            "Esforço de Venda": "ESFORÇO DE VENDA", "ESFORÇO DE VENDA": "ESFORÇO DE VENDA"
         }
-        obs_clean = obs_clean.rename(columns=col_map)
-        obs_reduced = obs_clean[["COD_Observatorio", "CLASSIFICACAO", "OFERTA_SENAI"]].drop_duplicates(subset=["COD_Observatorio"])
-        df = df.merge(obs_reduced, on="COD_Observatorio", how="left")
-
-    # Join de Concorrentes (Mantenho para a tabela, mas usaremos a base bruta 'conc' para os Cards)
-    conc_agg = conc.groupby("COD_Concorrentes")["INSTITUIÇÃO"].nunique().reset_index().rename(columns={"INSTITUIÇÃO": "QTD_CONCORRENTES"})
-    df = df.merge(conc_agg, on="COD_Concorrentes", how="left")
+        # Renomeia apenas as que existirem para evitar erro
+        df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
     
-    df["Valor"] = df["Valor"].fillna(0)
-    for col in ["VAGAS_ULTIM", "TURMA", "QTD_CONCORRENTES", "EVASAO_PAG", "EVASAO_BOLS"]:
-        if col in df.columns:
-            df[col] = df[col].fillna(0)
     return df
 
 # ─────────────────────────────────────────────
-# NOVO: FUNÇÃO DE CÁLCULO DE TENDÊNCIA (LÓGICA EXCEL)
+# FUNÇÃO DE CÁLCULO DE TENDÊNCIA
 # ─────────────────────────────────────────────
+def calcular_tendencia_linear(valores_num):
+    # X para 4 anos e 3 anos
+    x4 = np.array([1, 2, 3, 4])
+    x3 = np.array([2, 3, 4])
+    y = np.array(valores_num, dtype=float)
+
+    def fit_slope(xi, yi):
+        # Filtra para garantir que temos dados significativos (evita erro de projeção com zeros)
+        valid_mask = yi > 0
+        if sum(valid_mask) < 2: return None
+        try:
+            slope, _ = np.polyfit(xi, yi, 1)
+            return slope
+        except: return None
+
+    # Tenta 4 anos
+    slope = fit_slope(x4, y)
+    
+    # Se erro/sem dados, tenta os últimos 3 anos
+    if slope is None:
+        slope = fit_slope(x3, y[1:])
+
+    if slope is None: return "S/ Param."
+
+    # Classificação conforme fórmula da imagem
+    if slope > 1: return "Alta"
+    if slope > 0: return "Leve Alta"
+    if slope < -1: return "Baixa"
+    return "Leve Baixa"
+
+# ─────────────────────────────────────────────
+# 4. MOTOR DE CÁLCULO (MEDIDAS TEMPORAIS ATUALIZADO)
+# ─────────────────────────────────────────────
+def calcular_tendencia_linear(valores_num):
+    x4, x3 = np.array([1, 2, 3, 4]), np.array([2, 3, 4])
+    y = np.array(valores_num, dtype=float)
+    def fit_slope(xi, yi):
+        if sum(yi > 0) < 2: return None
+        try: return np.polyfit(xi, yi, 1)[0]
+        except: return None
+    slope = fit_slope(x4, y)
+    if slope is None: slope = fit_slope(x3, y[1:])
+    if slope is None: return "S/ Param."
+    if slope > 1: return "Alta"
+    if slope > 0: return "Leve Alta"
+    if slope < -1: return "Baixa"
+    return "Leve Baixa"
+
 def colorir_tendencia(val, tipo="crescimento"):
     if val == "S/ Param.": return val
-    cor_vde, cor_vrm = "#28a745", "#dc3545"
+    vde, vrm = "#28a745", "#dc3545"
     if tipo == "crescimento":
-        cor = cor_vde if "Alta" in val else (cor_vrm if "Baixa" in val else "inherit")
-    else: # evasao (lógica invertida)
-        cor = cor_vrm if "Alta" in val else (cor_vde if "Baixa" in val else "inherit")
-    return f'<div style="color:{cor}; font-weight:bold;">{val}</div>'
+        cor = vde if "Alta" in val else (vrm if "Baixa" in val else "inherit")
+    else: # Evasão: Alta é ruim (vermelho), Baixa é bom (verde)
+        cor = vrm if "Alta" in val else (vde if "Baixa" in val else "inherit")
+    return f'<b style="color:{cor}">{val}</b>'
 
 def medidas_temporais(g):
     anos_ref = [2023, 2024, 2025, 2026]
@@ -111,24 +151,34 @@ def medidas_temporais(g):
             sub = g.loc[mask, col]
             vals.append(int(round(float(sub.sum()))) if not sub.empty else 0)
         return vals
-    def fmt_s(v):
+
+    def fmt_s(v, tipo="mat"):
         if sum(v) == 0: return "-"
         res = []
+        # Definição de Símbolos e Cores por tipo
+        up_sym, down_sym = ("▲", "▼") if tipo == "ev" else ("🡅", "🡇")
+        up_color = "#dc3545" if tipo == "ev" else "#28a745"
+        down_color = "#28a745" if tipo == "ev" else "#dc3545"
+
         for i, atual in enumerate(v):
             if atual == 0: res.append("-")
             elif i > 0 and v[i-1] > 0:
-                seta = "🡅" if atual > v[i-1] else ("🡇" if atual < v[i-1] else "")
-                res.append(f"{seta} {atual}".strip())
+                if atual > v[i-1]:
+                    res.append(f'<span style="color:{up_color}">{up_sym}</span> {atual}')
+                elif atual < v[i-1]:
+                    res.append(f'<span style="color:{down_color}">{down_sym}</span> {atual}')
+                else: res.append(str(atual))
             else: res.append(str(atual))
         return " | ".join(res)
     
-    vp, vb, ep, eb = obter_v("PAGANTE","Valor"), obter_v("GRATUITO","Valor"), obter_v("PAGANTE","EVASAO_PAG"), obter_v("GRATUITO","EVASAO_BOLS")
+    vp, vb = obter_v("PAGANTE","Valor"), obter_v("GRATUITO","Valor")
+    ep, eb = obter_v("PAGANTE","EVASAO_PAG"), obter_v("GRATUITO","EVASAO_BOLS")
     
     return pd.Series({
-        "MAT. PAG. (23-26)": fmt_s(vp), 
-        "MAT. BOLS. (23-26)": fmt_s(vb),
-        "EV. PAG. (23-26)": fmt_s(ep), 
-        "EV. BOLS. (23-26)": fmt_s(eb),
+        "MAT. PAG. (23-26)": fmt_s(vp, "mat"), 
+        "MAT. BOLS. (23-26)": fmt_s(vb, "mat"),
+        "EV. PAG. (23-26)": fmt_s(ep, "ev"), 
+        "EV. BOLS. (23-26)": fmt_s(eb, "ev"),
         "TEND. MAT. PAG.": colorir_tendencia(calcular_tendencia_linear(vp), "crescimento"),
         "TEND. MAT. BOLS.": colorir_tendencia(calcular_tendencia_linear(vb), "crescimento"),
         "TEND. EV. PAG.": colorir_tendencia(calcular_tendencia_linear(ep), "evasao"),
@@ -263,37 +313,47 @@ with ct2:
 if c_sel: dff_tabela = dff_tabela[dff_tabela["CLASSIFICACAO"].isin(c_sel)]
 if o_val: dff_tabela = dff_tabela[dff_tabela["OFERTA_SENAI"] == o_val]
 
-# if not dff_tabela.empty:
-#     g_cols = ["CURSO", "MODALIDADE", "TURNO"]
-#     for c in ["CLASSIFICACAO", "OFERTA_SENAI"]:
-#         if c in dff_tabela.columns: g_cols.append(c)
-#     tabela_final = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
-#     if "level_0" in tabela_final.columns: tabela_final.drop(columns=["level_0"], inplace=True)
-#     interactive_table(tabela_final, paging=False, scrollY="500px", scrollX=True, columnDefs=[{"className": "dt-center", "targets": "_all"}])
-# else:
-#     st.warning("Nenhum dado encontrado para os filtros selecionados.")
-
-# ─────────────────────────────────────────────
-# RENDERIZAÇÃO DAS TABELAS LADO A LADO
+## ─────────────────────────────────────────────
+# RENDERIZAÇÃO DAS TABELAS LADO A LADO (CORRIGIDO)
 # ─────────────────────────────────────────────
 if not dff_tabela.empty:
-    g_cols = ["CURSO", "MODALIDADE", "TURNO"]
-    for c in ["CLASSIFICAÇÃO", "OFERTA SENAI"]:
-        if c in dff_tabela.columns: g_cols.append(c)
+    g_cols = ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"]
+    g_cols = [c for c in g_cols if c in dff_tabela.columns]
     
     tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
     if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
+    
+    # CSS Otimizado: Impede quebra de linha (nowrap) e centraliza colunas específicas
+    st.markdown("""
+        <style>
+        .custom-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .custom-table th { background: #f1f3f5; position: sticky; top: 0; padding: 12px 8px; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
+        .custom-table td { padding: 10px 8px; border-bottom: 1px solid #eee; white-space: nowrap; text-align: center; }
+        /* Permite quebra de linha apenas na primeira coluna (CURSO) e alinha à esquerda */
+        .custom-table td:first-child { white-space: normal !important; text-align: left !important; min-width: 180px; font-weight: 500; }
+        .scroll-container { overflow-x: auto; overflow-y: auto; max-height: 580px; border: 1px solid #e0e0e0; border-radius: 8px; }
+        </style>
+    """, unsafe_allow_html=True)
 
-    col_principal, col_tendencia = st.columns([0.55, 0.35])
+    col_principal, col_tendencia = st.columns([0.65, 0.35])
 
     with col_principal:
-        st.markdown("**DETALHAMENTO (2023-2026)**")
-        cols_p = g_cols + ["MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
-        interactive_table(tabela_resumo[cols_p], paging=False, scrollY="500px", scrollX=True)
+        st.markdown("**Detalhamento (2023-2026)**")
+        cols_p = g_cols + ["CONCORRENTES","MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
+        df_p = tabela_resumo[cols_p].copy()
+        
+        # Gerar HTML limpo - O CSS acima cuidará do alinhamento e do nowrap
+        html_p = df_p.to_html(escape=False, index=False, classes="custom-table")
+        st.markdown(f'<div class="scroll-container">{html_p}</div>', unsafe_allow_html=True)
 
     with col_tendencia:
-        st.markdown("**Tendências (2023 - 2025)**")
+        st.markdown("**Tendências (2023-2026)**")
         cols_t = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
-        interactive_table(tabela_resumo[cols_t], paging=False, scrollY="500px", scrollX=True)
+        df_t = tabela_resumo[cols_t].copy()
+        
+        html_t = df_t.to_html(escape=False, index=False, classes="custom-table")
+        st.markdown(f'<div class="scroll-container">{html_t}</div>', unsafe_allow_html=True)
 else:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
+
+#["MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
