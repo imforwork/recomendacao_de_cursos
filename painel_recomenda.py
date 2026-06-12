@@ -59,25 +59,35 @@ def load_raw_data():
 # 3. PROCESSAMENTO E JOINS
 # ─────────────────────────────────────────────
 def process_data(bd, conc, ev, vagas):
+    # 1. Agregação de Evasão (Mantida)
     ev_agg = (ev.groupby("COD_Base_de_Evasao")
                 .agg(EVASAO_PAG=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="PAGANTE"].sum()),
                      EVASAO_BOLS=("EVASAO", lambda x: x[ev.loc[x.index,"CONDIÇÃO"]=="GRATUITO"].sum()))
                 .reset_index())
     df = bd.merge(ev_agg, on="COD_Base_de_Evasao", how="left")
 
+    # 2. Agregação de Concorrentes (Lógica DISTINCTCOUNT por Contexto)
+    # Agrupamos por UNIDADE e CURSO para contar instituições únicas
+    conc_agg = conc.groupby(["UNIDADE", "CURSO"])["INSTITUIÇÃO"].nunique().reset_index()
+    conc_agg.columns = ["UNIDADE", "CURSO", "CONCORRENTES"]
+    
+    # Fazemos o merge baseado nas colunas dimensionais para garantir precisão
+    df = df.merge(conc_agg, on=["UNIDADE", "CURSO"], how="left")
+
     if not vagas.empty:
         vagas_m = vagas.rename(columns={"VAGAS_2": "VAGAS_ULTIM"}).drop_duplicates(subset=["COD_VAGAS"])
         df = df.merge(vagas_m[["COD_VAGAS", "VAGAS_ULTIM"]], on="COD_VAGAS", how="left")
     
     if not bd.empty:
-        # Padronizamos os nomes das colunas de interesse diretamente no DataFrame principal
         col_map = {
             "CLASSIFICACAO": "CLASSIFICACAO", "CLASSIFICAÇÃO": "CLASSIFICACAO", "Classificação": "CLASSIFICACAO",
             "OFERTA_SENAI": "OFERTA_SENAI", "Oferta Senai": "OFERTA_SENAI", "OFERTA SENAI": "OFERTA_SENAI",
             "Esforço de Venda": "ESFORÇO DE VENDA", "ESFORÇO DE VENDA": "ESFORÇO DE VENDA"
         }
-        # Renomeia apenas as que existirem para evitar erro
         df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
+    
+    # Tratamento de Nulos (Garante que cursos sem concorrentes cadastrados apareçam como 0)
+    df["CONCORRENTES"] = df["CONCORRENTES"].fillna(0).astype(int)
     
     return df
 
@@ -183,7 +193,7 @@ def medidas_temporais(g):
         "TEND. MAT. BOLS.": colorir_tendencia(calcular_tendencia_linear(vb), "crescimento"),
         "TEND. EV. PAG.": colorir_tendencia(calcular_tendencia_linear(ep), "evasao"),
         "TEND. EV. BOLS.": colorir_tendencia(calcular_tendencia_linear(eb), "evasao"),
-        "CONCORRENTES": int(g["QTD_CONCORRENTES"].max()) if "QTD_CONCORRENTES" in g.columns else 0
+        "CONCORRENTES": int(g["CONCORRENTES"].max()),
     })
 
 # ─────────────────────────────────────────────
@@ -260,6 +270,12 @@ def calc_kpis(current_df, full_df, ano_atual, mask_filtros, base_concorrentes):
     return at, ant, total_conc
 
 ult_ano = max(ano_sel) if ano_sel else 2025
+
+total_conc = conc[
+    (conc["UNIDADE"].isin(uni_sel)) & 
+    (conc["CURSO"].isin(curso_sel))
+]["INSTITUIÇÃO"].nunique()
+
 (at_metrics, ant_metrics, total_conc) = calc_kpis(dff_kpi, df, ult_ano, mask_base, conc)
 
 def render_kpi(col, label, val, ant, color, is_evasao=False, is_percent=False):
@@ -286,11 +302,12 @@ def render_kpi(col, label, val, ant, color, is_evasao=False, is_percent=False):
 # Layout de 7 colunas para comportar as novas taxas
 ck1, ck2, ck3, ck4, ck5, ck6, ck7 = st.columns(7)
 render_kpi(ck1, "Matrículas Pagante", at_metrics[0], ant_metrics[0], "#004587")
-render_kpi(ck2, "Taxa Evasão Pag.", at_metrics[4], ant_metrics[4], "#69280D", is_evasao=True, is_percent=True)
-render_kpi(ck3, "Evasão Pagante", at_metrics[2], ant_metrics[2], "#dc8d26", is_evasao=True)
+render_kpi(ck2, "Evasão Pagante", at_metrics[2], ant_metrics[2], "#dc8d26", is_evasao=True)
+render_kpi(ck3, "Taxa Evasão Pag.", at_metrics[4], ant_metrics[4], "#69280D", is_evasao=True, is_percent=True)
 render_kpi(ck4, "Matrículas Bolsista", at_metrics[1], ant_metrics[1], "#004587")
-render_kpi(ck5, "Taxa Evasão Bols.", at_metrics[5], ant_metrics[5], "#69280D", is_evasao=True, is_percent=True)
-render_kpi(ck6, "Evasão Bolsista", at_metrics[3], ant_metrics[3], "#dc8d26", is_evasao=True)
+render_kpi(ck5, "Evasão Bolsista", at_metrics[3], ant_metrics[3], "#dc8d26", is_evasao=True)
+render_kpi(ck6, "Taxa Evasão Bols.", at_metrics[5], ant_metrics[5], "#69280D", is_evasao=True, is_percent=True)
+
 with ck7:
     st.markdown(f"""
     <div class="kpi-box" style="border-left-color: #00A199;">
