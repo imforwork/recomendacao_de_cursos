@@ -333,44 +333,121 @@ if o_val: dff_tabela = dff_tabela[dff_tabela["OFERTA_SENAI"] == o_val]
 ## ─────────────────────────────────────────────
 # RENDERIZAÇÃO DAS TABELAS LADO A LADO (CORRIGIDO)
 # ─────────────────────────────────────────────
-if not dff_tabela.empty:
-    g_cols = ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"]
-    g_cols = [c for c in g_cols if c in dff_tabela.columns]
+# if not dff_tabela.empty:
+#     g_cols = ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"]
+#     g_cols = [c for c in g_cols if c in dff_tabela.columns]
     
+#     tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
+#     if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
+    
+#     # CSS Otimizado: Impede quebra de linha (nowrap) e centraliza colunas específicas
+#     st.markdown("""
+#         <style>
+#         .custom-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+#         .custom-table th { background: #f1f3f5; position: sticky; top: 0; padding: 12px 8px; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
+#         .custom-table td { padding: 10px 8px; border-bottom: 1px solid #eee; white-space: nowrap; text-align: center; }
+#         /* Permite quebra de linha apenas na primeira coluna (CURSO) e alinha à esquerda */
+#         .custom-table td:first-child { white-space: normal !important; text-align: left !important; min-width: 180px; font-weight: 500; }
+#         .scroll-container { overflow-x: auto; overflow-y: auto; max-height: 580px; border: 1px solid #e0e0e0; border-radius: 8px; }
+#         </style>
+#     """, unsafe_allow_html=True)
+
+#     col_principal, col_tendencia = st.columns([0.65, 0.35])
+
+#     with col_principal:
+#         st.markdown("**Detalhamento (2023-2026)**")
+#         cols_p = g_cols + ["CONCORRENTES","MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
+#         df_p = tabela_resumo[cols_p].copy()
+        
+#         # Gerar HTML limpo - O CSS acima cuidará do alinhamento e do nowrap
+#         html_p = df_p.to_html(escape=False, index=False, classes="custom-table")
+#         st.markdown(f'<div class="scroll-container">{html_p}</div>', unsafe_allow_html=True)
+
+#     with col_tendencia:
+#         st.markdown("**Tendências (2023-2026)**")
+#         cols_t = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
+#         df_t = tabela_resumo[cols_t].copy()
+        
+#         html_t = df_t.to_html(escape=False, index=False, classes="custom-table")
+#         st.markdown(f'<div class="scroll-container">{html_t}</div>', unsafe_allow_html=True)
+# else:
+#     st.warning("Nenhum dado encontrado para os filtros selecionados.")
+#====================================================---------------------------------------------------
+
+## ─────────────────────────────────────────────
+# RENDERIZAÇÃO DA TABELA UNIFICADA (ALINHAMENTO PERFEITO)
+# ─────────────────────────────────────────────
+## ─────────────────────────────────────────────
+# RENDERIZAÇÃO DA TABELA COM CORES ATUALIZADAS
+# ─────────────────────────────────────────────
+if not dff_tabela.empty:
+    # 1. Agrupamento e Medidas (Mesma lógica anterior)
+    g_cols = [c for c in ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"] if c in dff_tabela.columns]
     tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
     if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
     
-    # CSS Otimizado: Impede quebra de linha (nowrap) e centraliza colunas específicas
+    # 2. CSS ATUALIZADO COM AS NOVAS CORES
     st.markdown("""
         <style>
-        .custom-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-        .custom-table th { background: #f1f3f5; position: sticky; top: 0; padding: 12px 8px; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
-        .custom-table td { padding: 10px 8px; border-bottom: 1px solid #eee; white-space: nowrap; text-align: center; }
-        /* Permite quebra de linha apenas na primeira coluna (CURSO) e alinha à esquerda */
-        .custom-table td:first-child { white-space: normal !important; text-align: left !important; min-width: 180px; font-weight: 500; }
-        .scroll-container { overflow-x: auto; overflow-y: auto; max-height: 580px; border: 1px solid #e0e0e0; border-radius: 8px; }
+        .dashboard-container { overflow-x: auto; max-height: 650px; border: 1px solid #e0e0e0; border-radius: 8px; background: white; }
+        .unified-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        
+        /* ATUALIZAÇÃO DO CABEÇALHO */
+        .unified-table th { 
+            background: #B1C9D9 !important; /* Cor de fundo solicitada */
+            color: #2E4159 !important;      /* Cor da letra solicitada */
+            position: sticky; 
+            top: 0; 
+            z-index: 10;
+            padding: 12px 10px; 
+            border-bottom: 2px solid #dee2e6; 
+            white-space: nowrap; 
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        
+        .unified-table td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: center; color: #333; }
+        
+        /* Alinhamento da coluna CURSO e fixação */
+        .unified-table td:first-child, .unified-table th:first-child { 
+            text-align: left !important; 
+            min-width: 200px; 
+            position: sticky; 
+            left: 0; 
+            background: white; 
+            z-index: 5;
+        }
+        
+        /* Garante que o cabeçalho fixo do CURSO também tenha a cor nova */
+        .unified-table th:first-child { background: #B1C9D9 !important; z-index: 11; }
+
+        .sep-col { border-left: 3px solid #B1C9D9 !important; background: #fcfcfc; }
+        .unified-table tr:hover { background-color: #f8f9fa; }
+        .unified-table tr:hover td:first-child { background-color: #f8f9fa; }
         </style>
     """, unsafe_allow_html=True)
 
-    col_principal, col_tendencia = st.columns([0.65, 0.35])
-
-    with col_principal:
-        st.markdown("**Detalhamento (2023-2026)**")
-        cols_p = g_cols + ["CONCORRENTES","MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
-        df_p = tabela_resumo[cols_p].copy()
-        
-        # Gerar HTML limpo - O CSS acima cuidará do alinhamento e do nowrap
-        html_p = df_p.to_html(escape=False, index=False, classes="custom-table")
-        st.markdown(f'<div class="scroll-container">{html_p}</div>', unsafe_allow_html=True)
-
-    with col_tendencia:
-        st.markdown("**Tendências (2023-2026)**")
-        cols_t = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
-        df_t = tabela_resumo[cols_t].copy()
-        
-        html_t = df_t.to_html(escape=False, index=False, classes="custom-table")
-        st.markdown(f'<div class="scroll-container">{html_t}</div>', unsafe_allow_html=True)
+    # 3. Construção do HTML (Mesma estrutura unificada)
+    cols_principal = [c for c in g_cols if c != "CURSO"] + ["CONCORRENTES", "MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
+    cols_tendencia = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
+    all_headers = ["CURSO"] + cols_principal + cols_tendencia
+    
+    html_str = '<div class="dashboard-container"><table class="unified-table"><thead><tr>'
+    for h in all_headers:
+        extra_class = ' class="sep-col"' if h == "TEND. MAT. PAG." else ""
+        html_str += f'<th{extra_class}>{h}</th>'
+    html_str += '</tr></thead><tbody>'
+    
+    for _, row in tabela_resumo.iterrows():
+        html_str += '<tr>'
+        for h in all_headers:
+            val = row[h] if h in row else ""
+            extra_class = ' class="sep-col"' if h == "TEND. MAT. PAG." else ""
+            html_str += f'<td{extra_class}>{val}</td>'
+        html_str += '</tr>'
+    
+    html_str += '</tbody></table></div>'
+    st.markdown(html_str, unsafe_allow_html=True)
 else:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
-
 #["MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
