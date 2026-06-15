@@ -153,47 +153,69 @@ def colorir_tendencia(val, tipo="crescimento"):
 
 def medidas_temporais(g):
     anos_ref = [2023, 2024, 2025, 2026]
-    def obter_v(cond, col):
-        vals = []
+
+    # Função auxiliar para métricas simples (Matrículas, Vagas, etc)
+    def gerar_serie_temporal(condicao, coluna, is_sum=True):
+        valores_num = []
         for ano in anos_ref:
-            mask = (g["ANO"] == ano)
-            if cond: mask &= (g["CONDIÇÃO"] == cond)
-            sub = g.loc[mask, col]
-            vals.append(int(round(float(sub.sum()))) if not sub.empty else 0)
-        return vals
-
-    def fmt_s(v, tipo="mat"):
-        if sum(v) == 0: return "-"
+            m_ano = (g["ANO"] == ano)
+            if condicao: m_ano &= (g["CONDIÇÃO"] == condicao)
+            sub = g.loc[m_ano, coluna]
+            val = (sub.sum() if is_sum else sub.max()) if not sub.empty else 0
+            valores_num.append(0 if pd.isna(val) else int(round(val)))
+        
+        if sum(valores_num) == 0: return "-"
+        
         res = []
-        # Definição de Símbolos e Cores por tipo
-        up_sym, down_sym = ("▲", "▼") if tipo == "ev" else ("🡅", "🡇")
-        up_color = "#dc3545" if tipo == "ev" else "#28a745"
-        down_color = "#28a745" if tipo == "ev" else "#dc3545"
-
-        for i, atual in enumerate(v):
+        for i, atual in enumerate(valores_num):
             if atual == 0: res.append("-")
-            elif i > 0 and v[i-1] > 0:
-                if atual > v[i-1]:
-                    res.append(f'<span style="color:{up_color}">{up_sym}</span> {atual}')
-                elif atual < v[i-1]:
-                    res.append(f'<span style="color:{down_color}">{down_sym}</span> {atual}')
+            else:
+                if i > 0 and valores_num[i-1] > 0:
+                    if atual > valores_num[i-1]: res.append(f"<span style='color: #28a745;'>🡅</span>{atual}")
+                    elif atual < valores_num[i-1]: res.append(f"<span style='color: #dc3545;'>🡇</span>{atual}")
+                    else: res.append(str(atual))
                 else: res.append(str(atual))
-            else: res.append(str(atual))
         return " | ".join(res)
-    
-    vp, vb = obter_v("PAGANTE","Valor"), obter_v("GRATUITO","Valor")
-    ep, eb = obter_v("PAGANTE","EVASAO_PAG"), obter_v("GRATUITO","EVASAO_BOLS")
-    
+
+    # NOVA FUNÇÃO: Lógica para Taxas de Evasão com Legendas (S/ Oferta e Cancelado)
+    def gerar_serie_taxa_evasao(condicao, col_evasao):
+        res_str = []
+        for ano in anos_ref:
+            # Dados do ano
+            g_ano = g[g["ANO"] == ano]
+            
+            # 1. Verificar Oferta (Vagas ou Turmas)
+            vagas = g_ano["VAGAS_ULTIM"].max() if not g_ano.empty else 0
+            turmas = g_ano["TURMA"].max() if not g_ano.empty else 0
+            
+            if (vagas == 0 or pd.isna(vagas)) and (turmas == 0 or pd.isna(turmas)):
+                res_str.append("S/ Oferta")
+                continue
+            
+            # 2. Verificar Matrículas (Valor) para a condição específica
+            g_cond = g_ano[g_ano["CONDIÇÃO"] == condicao]
+            matriculas = g_cond["Valor"].sum() if not g_cond.empty else 0
+            
+            if matriculas == 0 or pd.isna(matriculas):
+                res_str.append("Cancelado")
+                continue
+            
+            # 3. Calcular Taxa de Evasão
+            evasao = g_cond[col_evasao].sum() if not g_cond.empty else 0
+            taxa = (evasao / matriculas) * 100
+            res_str.append(f"{int(round(taxa))}%")
+            
+        return " | ".join(res_str)
+
     return pd.Series({
-        "MAT. PAG. (23-26)": fmt_s(vp, "mat"), 
-        "MAT. BOLS. (23-26)": fmt_s(vb, "mat"),
-        "EV. PAG. (23-26)": fmt_s(ep, "ev"), 
-        "EV. BOLS. (23-26)": fmt_s(eb, "ev"),
-        "TEND. MAT. PAG.": colorir_tendencia(calcular_tendencia_linear(vp), "crescimento"),
-        "TEND. MAT. BOLS.": colorir_tendencia(calcular_tendencia_linear(vb), "crescimento"),
-        "TEND. EV. PAG.": colorir_tendencia(calcular_tendencia_linear(ep), "evasao"),
-        "TEND. EV. BOLS.": colorir_tendencia(calcular_tendencia_linear(eb), "evasao"),
-        "CONCORRENTES": int(g["CONCORRENTES"].max()),
+        "MAT. PAG. (23-26)":  gerar_serie_temporal("PAGANTE", "Valor"),
+        "MAT. BOLS. (23-26)": gerar_serie_temporal("GRATUITO", "Valor"),
+        "TAXA EVASÃO PAG.":   gerar_serie_taxa_evasao("PAGANTE", "EVASAO_PAG"),
+        "TAXA EVASÃO BOLS.":  gerar_serie_taxa_evasao("GRATUITO", "EVASAO_BOLS"),
+        "VAGAS (23-26)":      gerar_serie_temporal(None, "VAGAS_ULTIM", False),
+        "TURMAS (23-26)":     gerar_serie_temporal(None, "TURMA", False),
+        "TEND. MAT. PAG.":    colorir_tendencia(calcular_tendencia_linear([int(round(g[g["ANO"]==a][g["CONDIÇÃO"]=="PAGANTE"]["Valor"].sum())) if not g[g["ANO"]==a][g["CONDIÇÃO"]=="PAGANTE"]["Valor"].empty else 0 for a in anos_ref]), "crescimento"),
+        "CONCORRENTES":       int(g["CONCORRENTES"].max() if "CONCORRENTES" in g.columns else 0)
     })
 
 # ─────────────────────────────────────────────
@@ -317,7 +339,27 @@ with ck7:
     </div>
     """, unsafe_allow_html=True)
 
-# --- FILTROS DE TOPO E TABELA (MANTIDOS) ---
+
+## ─────────────────────────────────────────────
+# SISTEMA DE CONTROLE DE VISIBILIDADE (MENU)
+## ─────────────────────────────────────────────
+
+# Inicializa o estado dos botões se não existirem
+if 'ver_tendencias' not in st.session_state:
+    st.session_state.ver_tendencias = True  # Começa visível
+
+st.markdown('<div class="section-title">MENU DE VISUALIZAÇÃO</div>', unsafe_allow_html=True)
+col_btn1, col_btn2, _ = st.columns([1, 1, 4])
+
+with col_btn1:
+    label_tend = "OCULTAR TENDÊNCIAS" if st.session_state.ver_tendencias else "ANALISAR TENDÊNCIAS"
+    if st.button(label_tend, use_container_width=True):
+        st.session_state.ver_tendencias = not st.session_state.ver_tendencias
+        st.rerun() # Atualiza a tela imediatamente
+
+## ─────────────────────────────────────────────
+#  FILTROS DE TOPO E TABELA (MANTIDOS)
+## ─────────────────────────────────────────────
 st.divider()
 st.markdown('<div class="section-title">🔍 Detalhamento </div>', unsafe_allow_html=True)
 ct1, ct2 = st.columns([0.5, 1])
@@ -330,110 +372,151 @@ with ct2:
 if c_sel: dff_tabela = dff_tabela[dff_tabela["CLASSIFICACAO"].isin(c_sel)]
 if o_val: dff_tabela = dff_tabela[dff_tabela["OFERTA_SENAI"] == o_val]
 
-## ─────────────────────────────────────────────
-# RENDERIZAÇÃO DAS TABELAS LADO A LADO (CORRIGIDO)
-# ─────────────────────────────────────────────
-# if not dff_tabela.empty:
-#     g_cols = ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"]
-#     g_cols = [c for c in g_cols if c in dff_tabela.columns]
-    
-#     tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
-#     if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
-    
-#     # CSS Otimizado: Impede quebra de linha (nowrap) e centraliza colunas específicas
-#     st.markdown("""
-#         <style>
-#         .custom-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-#         .custom-table th { background: #f1f3f5; position: sticky; top: 0; padding: 12px 8px; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
-#         .custom-table td { padding: 10px 8px; border-bottom: 1px solid #eee; white-space: nowrap; text-align: center; }
-#         /* Permite quebra de linha apenas na primeira coluna (CURSO) e alinha à esquerda */
-#         .custom-table td:first-child { white-space: normal !important; text-align: left !important; min-width: 180px; font-weight: 500; }
-#         .scroll-container { overflow-x: auto; overflow-y: auto; max-height: 580px; border: 1px solid #e0e0e0; border-radius: 8px; }
-#         </style>
-#     """, unsafe_allow_html=True)
 
-#     col_principal, col_tendencia = st.columns([0.65, 0.35])
-
-#     with col_principal:
-#         st.markdown("**Detalhamento (2023-2026)**")
-#         cols_p = g_cols + ["CONCORRENTES","MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
-#         df_p = tabela_resumo[cols_p].copy()
-        
-#         # Gerar HTML limpo - O CSS acima cuidará do alinhamento e do nowrap
-#         html_p = df_p.to_html(escape=False, index=False, classes="custom-table")
-#         st.markdown(f'<div class="scroll-container">{html_p}</div>', unsafe_allow_html=True)
-
-#     with col_tendencia:
-#         st.markdown("**Tendências (2023-2026)**")
-#         cols_t = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
-#         df_t = tabela_resumo[cols_t].copy()
-        
-#         html_t = df_t.to_html(escape=False, index=False, classes="custom-table")
-#         st.markdown(f'<div class="scroll-container">{html_t}</div>', unsafe_allow_html=True)
-# else:
-#     st.warning("Nenhum dado encontrado para os filtros selecionados.")
-#====================================================---------------------------------------------------
 
 ## ─────────────────────────────────────────────
-# RENDERIZAÇÃO DA TABELA UNIFICADA (ALINHAMENTO PERFEITO)
-# ─────────────────────────────────────────────
+# SISTEMA DE CONTROLE NO MENU (CORRIGIDO COM KEYS)
 ## ─────────────────────────────────────────────
-# RENDERIZAÇÃO DA TABELA COM CORES ATUALIZADAS
-# ─────────────────────────────────────────────
+if 'ver_tendencias' not in st.session_state: st.session_state.ver_tendencias = True
+if 'ver_evasao' not in st.session_state: st.session_state.ver_evasao = True
+
+st.markdown('<div class="section-title">MENU DE VISUALIZAÇÃO</div>', unsafe_allow_html=True)
+c_btn1, c_btn2, _ = st.columns([1, 1, 4])
+
+with c_btn1:
+    label_tend = "OCULTAR TENDÊNCIAS" if st.session_state.ver_tendencias else "VER TENDÊNCIAS"
+    # Adicionada a key="btn_tendencia" para evitar erro de ID duplicado
+    if st.button(label_tend, use_container_width=True, key="btn_tendencia"):
+        st.session_state.ver_tendencias = not st.session_state.ver_tendencias
+        st.rerun()
+
+with c_btn2:
+    label_ev = "OCULTAR EVASÃO" if st.session_state.ver_evasao else "VER EVASÃO"
+    # Adicionada a key="btn_evasao" para evitar erro de ID duplicado
+    if st.button(label_ev, use_container_width=True, key="btn_evasao"):
+        st.session_state.ver_evasao = not st.session_state.ver_evasao
+        st.rerun()
+## ─────────────────────────────────────────────
+# 2. RENDERIZAÇÃO DA TABELA (COM LÓGICA DE COLUNAS)
+## ─────────────────────────────────────────────
 if not dff_tabela.empty:
-    # 1. Agrupamento e Medidas (Mesma lógica anterior)
+    # A. Agrupamento (Mesma lógica)
     g_cols = [c for c in ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"] if c in dff_tabela.columns]
     tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
     if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
     
-    # 2. CSS ATUALIZADO COM AS NOVAS CORES
+    # B. CSS (Mesmo estilo enviado antes)
+    st.markdown("""<style>...</style>""", unsafe_allow_html=True) # Mantenha seu CSS aqui
+
+    # C. CONSTRUÇÃO DINÂMICA DAS COLUNAS (O SEGREDO ESTÁ AQUI)
+    # 1. Colunas que SEMPRE aparecem
+    cols_estaticas = ["CURSO"] + [c for c in g_cols if c != "CURSO"] + ["CONCORRENTES"]
+    
+    # 2. Colunas de Matrículas e Vagas (Principais)
+    all_headers = cols_estaticas + ["MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "VAGAS (23-26)"]
+    
+    # 3. Adiciona as colunas de EVASÃO se o botão estiver ativo
+    if st.session_state.ver_evasao:
+        all_headers += ["TAXA EVASÃO PAG.", "TAXA EVASÃO BOLS."]
+        
+    # 4. Adiciona as colunas de TENDÊNCIA se o botão estiver ativo
+    if st.session_state.ver_tendencias:
+        all_headers += ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
+    
+    # D. CONSTRUÇÃO DO HTML
+    html_str = '<div class="dashboard-container"><table class="unified-table"><thead><tr>'
+    for h in all_headers:
+        # Define onde colocar a borda azul (Separadores visuais)
+        extra_class = ""
+        if h == "TAXA EVASÃO PAG." or h == "TEND. MAT. PAG.":
+            extra_class = ' class="sep-col"'
+            
+        html_str += f'<th{extra_class}>{h}</th>'
+    html_str += '</tr></thead><tbody>'
+    
+    for _, row in tabela_resumo.iterrows():
+        html_str += '<tr>'
+        for h in all_headers:
+            val = row[h] if h in row else ""
+            # Repete a classe para alinhar a borda na coluna inteira
+            extra_class = ""
+            if h == "TAXA EVASÃO PAG." or h == "TEND. MAT. PAG.":
+                extra_class = ' class="sep-col"'
+            
+            html_str += f'<td{extra_class}>{val}</td>'
+        html_str += '</tr>'
+    
+    html_str += '</tbody></table></div>'
+    st.markdown(html_str, unsafe_allow_html=True)
+
+## ─────────────────────────────────────────────
+# RENDERIZAÇÃO DA TABELA
+## ─────────────────────────────────────────────
+if not dff_tabela.empty:
+    # 1. Agrupamento e Medidas
+    g_cols = [c for c in ["CURSO", "MODALIDADE", "TURNO", "CLASSIFICACAO", "OFERTA_SENAI", "ESFORÇO DE VENDA"] if c in dff_tabela.columns]
+    tabela_resumo = dff_tabela.groupby(g_cols, dropna=False, as_index=False).apply(medidas_temporais).reset_index()
+    if "level_0" in tabela_resumo.columns: tabela_resumo.drop(columns=["level_0"], inplace=True)
+    
+    # 2. CSS ATUALIZADO (Removendo quebras de linha)
     st.markdown("""
         <style>
         .dashboard-container { overflow-x: auto; max-height: 650px; border: 1px solid #e0e0e0; border-radius: 8px; background: white; }
         .unified-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         
-        /* ATUALIZAÇÃO DO CABEÇALHO */
         .unified-table th { 
-            background: #B1C9D9 !important; /* Cor de fundo solicitada */
-            color: #2E4159 !important;      /* Cor da letra solicitada */
+            background: #B1C9D9 !important; 
+            color: #2E4159 !important;      
             position: sticky; 
             top: 0; 
             z-index: 10;
             padding: 12px 10px; 
             border-bottom: 2px solid #dee2e6; 
-            white-space: nowrap; 
+            white-space: nowrap; /* Sem quebra no cabeçalho */
             text-transform: uppercase;
             font-weight: 700;
         }
         
-        .unified-table td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: center; color: #333; }
+        /* ESTILO DAS CÉLULAS: No-wrap em todas, exceto na primeira (CURSO) */
+        .unified-table td { 
+            padding: 8px 10px; 
+            border-bottom: 1px solid #eee; 
+            text-align: center; 
+            color: #333;
+            white-space: nowrap; /* TIRA A QUEBRA DE LINHA */
+        }
         
-        /* Alinhamento da coluna CURSO e fixação */
         .unified-table td:first-child, .unified-table th:first-child { 
             text-align: left !important; 
-            min-width: 200px; 
+            min-width: 250px; 
             position: sticky; 
             left: 0; 
             background: white; 
             z-index: 5;
+            white-space: normal !important; /* PERMITE QUEBRA DE LINHA SÓ NO CURSO */
         }
         
-        /* Garante que o cabeçalho fixo do CURSO também tenha a cor nova */
         .unified-table th:first-child { background: #B1C9D9 !important; z-index: 11; }
-
         .sep-col { border-left: 3px solid #B1C9D9 !important; background: #fcfcfc; }
         .unified-table tr:hover { background-color: #f8f9fa; }
         .unified-table tr:hover td:first-child { background-color: #f8f9fa; }
         </style>
     """, unsafe_allow_html=True)
 
-    # 3. Construção do HTML (Mesma estrutura unificada)
-    cols_principal = [c for c in g_cols if c != "CURSO"] + ["CONCORRENTES", "MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
-    cols_tendencia = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
-    all_headers = ["CURSO"] + cols_principal + cols_tendencia
+    # 3. Construção Dinâmica das Colunas
+    cols_principal = [c for c in g_cols if c != "CURSO"] + ["CONCORRENTES", "MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "VAGAS (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
+    # Lista de colunas a exibir
+    all_headers = ["CURSO"] + cols_principal
     
+    # Se o botão de tendências estiver ativo, adiciona as colunas extras
+    if st.session_state.ver_tendencias:
+        cols_tendencia = ["TEND. MAT. PAG.", "TEND. MAT. BOLS.", "TEND. EV. PAG.", "TEND. EV. BOLS."]
+        all_headers += cols_tendencia
+    
+    # Construção do HTML
     html_str = '<div class="dashboard-container"><table class="unified-table"><thead><tr>'
     for h in all_headers:
+        # Aplica a classe de separador apenas se for a primeira coluna de tendência
         extra_class = ' class="sep-col"' if h == "TEND. MAT. PAG." else ""
         html_str += f'<th{extra_class}>{h}</th>'
     html_str += '</tr></thead><tbody>'
@@ -450,4 +533,3 @@ if not dff_tabela.empty:
     st.markdown(html_str, unsafe_allow_html=True)
 else:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
-#["MAT. PAG. (23-26)", "MAT. BOLS. (23-26)", "EV. PAG. (23-26)", "EV. BOLS. (23-26)"]
