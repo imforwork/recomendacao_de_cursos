@@ -3,7 +3,7 @@ import warnings
 import pandas as pd
 import numpy as np
 import streamlit as st
-from itables.streamlit import interactive_table
+# from itables.streamlit import interactive_table
 from io import BytesIO
 
 warnings.filterwarnings("ignore")
